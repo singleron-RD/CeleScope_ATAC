@@ -1,0 +1,16 @@
+bioconda::bioconductor-scpipe=2.0.0
+r::r-shiny
+conda-forge::r-rmarkdown
+conda-forge::r-kableextra
+conda-forge::r-readr
+conda-forge::r-plotly
+conda-forge::r-gridextra
+conda-forge::r-dt
+conda-forge::r-reshape2
+conda-forge::r-learnr
+bioconda::bioconductor-rsamtools
+bioconda::samtools=1.16.1
+conda-forge::r-irlba
+conda-forge::r-rann
+conda-forge::r-igraph
+conda-forge::r-umap
