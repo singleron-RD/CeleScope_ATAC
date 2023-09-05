@@ -14,3 +14,4 @@ conda-forge::r-irlba
 conda-forge::r-rann
 conda-forge::r-igraph
 conda-forge::r-umap
+conda-forge::r-argparse
