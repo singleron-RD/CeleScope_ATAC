@@ -9,6 +9,10 @@ from celescope.__init__ import ROOT_PATH
 def get_opts_atac(parser, sub_program):
     parser.add_argument('--reference', help='reference path', required=True)
     parser.add_argument('--organism', help='hg38 for human, mm10 for mouse', required=True)
+    parser.add_argument(
+        '--rm_pcr_dup', 
+        help="Whether or not to remove PCR duplicate. High-quality read pairs that are deemed to be PCR duplicates.",
+        action='store_true')
     if sub_program:
         s_common(parser)
         parser.add_argument('--r1', help='R1 reads from step Barcode.', required=True)
@@ -31,6 +35,7 @@ class ATAC(Step):
         self.r3 = args.r3
         self.reference = args.reference
         self.organism = args.organism
+        self.rm_pcr_dup = args.rm_pcr_dup
         self.outdir = os.path.abspath(self.outdir)
     
     @utils.add_log
@@ -47,6 +52,7 @@ class ATAC(Step):
             f"--outdir {self.outdir} "
             f"--reference {self.reference} "
             f"--organism {self.organism} "
+            f"--rm_pcr_dup {self.rm_pcr_dup} "
         )
         subprocess.check_call(cmd, shell=True)
     

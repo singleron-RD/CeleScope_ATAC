@@ -10,6 +10,7 @@ parser$add_argument("--thread",help="Sample name", required=TRUE)
 parser$add_argument("--outdir", help='Output diretory.', required=TRUE)
 parser$add_argument("--reference", help='Reference path', required=TRUE)
 parser$add_argument("--organism", help='Organism', required=TRUE)
+parser$add_argument("--rm_pcr_dup", help='Whether or not to remove PCR duplicate', required=TRUE)
 args <- parser$parse_args()
 
 sample <- args$sample
@@ -20,6 +21,7 @@ thread <- as.double(args$thread)
 output_folder <- args$outdir
 reference <- args$reference
 organism <- args$organism
+rm_pcr_dup <- args$rm_pcr_dup
 
 # convert format
 sc_atac_trim_barcode (r1            = r1, 
@@ -30,8 +32,10 @@ sc_atac_trim_barcode (r1            = r1,
                       output_folder = output_folder)
 
 # Aligning reads to a reference genome
-demux_r1 <- file.path(output_folder, paste0("demux_completematch_", sample, "_R1.fastq.gz"))
-demux_r2 <- file.path(output_folder, paste0("demux_completematch_", sample, "_R3.fastq.gz"))
+# demux_r1 <- file.path(output_folder, paste0("demux_completematch_", sample, "_R1.fastq.gz"))
+# demux_r2 <- file.path(output_folder, paste0("demux_completematch_", sample, "_R3.fastq.gz"))
+demux_r1 <- file.path(output_folder, paste0("demux_completematch_", sample, "_1.fq"))
+demux_r2 <- file.path(output_folder, paste0("demux_completematch_", sample, "_3.fq"))
 aligned_bam <- sc_aligning(ref = reference,
                 R1 = demux_r1,
                 R2 = demux_r2,
@@ -47,8 +51,10 @@ sorted_tagged_bam <- sc_atac_bam_tagging(inbam = aligned_bam,
 # Remove duplicates
 removed <- sc_atac_remove_duplicates(sorted_tagged_bam,
                           output_folder = output_folder,)
-if (!isFALSE(removed))
+
+if (grepl("True", rm_pcr_dup)){
   sorted_tagged_bam <- removed
+}
 
 # Gemerating a fragment file
 sc_atac_create_fragments(inbam = sorted_tagged_bam,

@@ -26,7 +26,7 @@ class Multi_bulk_vdj(Multi):
             f'--r2 {r2} '
             f'--r3 {r3} '
         )
-        self.process_cmd(cmd, step, sample, m=15, x=self.args.thread)
+        self.process_cmd(cmd, step, sample, m=30, x=self.args.thread)
 
 
 def main():
