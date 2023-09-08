@@ -1,2 +1,14 @@
-# CeleScope_ATAC
-Single Cell ATAC-Seq Analysis Pipelines
+# Introduction
+Celescope_ATAC is used to process single cell atac sequencing data generated with Singleron product. This pipeline takes paired-end FASTQ files as input and generate output files which can be used for downstream data analysis as well as a summary of QC criteria.
+
+# Documentation
+
+[User guide](./doc/user_guide.md)
+
+# Support
+Please use the issue tracker for questions and malfunctions.
+
+# About
+CeleScope is currently developed by Singleron Biotechnologies.
+
+[www.singleron.bio](https://www.singleron.bio)
