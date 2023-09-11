@@ -1,9 +1,14 @@
 import subprocess
 import pandas as pd 
+import numpy as np 
 import os
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 from celescope.__init__ import ROOT_PATH
+from celescope.tools import get_plot_elements
+
+
+__SUB_STEPS__ = ['cells']
 
 
 def get_opts_atac(parser, sub_program):
@@ -56,11 +61,82 @@ class ATAC(Step):
         )
         subprocess.check_call(cmd, shell=True)
     
+    @utils.add_log
+    def cp_report(self):
+        cmd = (f"cp {self.outdir}/scPipe_atac_stats/scPipe_atac_report.html {self.sample}")
+        os.system(cmd)
+    
     def run(self):
-        self.run_scpipe()
+        #self.run_scpipe()
+        self.cp_report()
 
 
 def atac(args):
-    
     with ATAC(args) as runner:
         runner.run()
+    
+    with Cells(args) as runner:
+        runner.run()
+        
+        
+class Cells(Step):
+    def __init__(self, args, display_title=None):
+        super().__init__(args, display_title=display_title)
+
+        self.df_cell = pd.read_csv(f"{self.outdir}/cell_qc_metrics.csv", index_col=0, sep=',')
+
+    def run(self):
+        cell_num = self.df_cell[self.df_cell.cell_called==True].shape[0]
+        self.add_metric(
+            name = 'Estimated Number of Cells',
+            value = cell_num,
+            help_info = 'The total number of barcodes identified as cells.'           
+        )
+
+        raw_reads = self.get_slot_key(
+            slot='metrics',
+            step_name='barcode',
+            key='Raw Reads',
+        )
+        self.add_metric(
+            name = 'Mean raw read pairs per cell',
+            value = int(raw_reads / cell_num),
+            help_info = 'Total number of read pairs divided by the number of cell barcodes.'           
+        )
+
+        self.add_metric(
+            name = 'Fraction of fragments overlap with peaks in cells',
+            value = f'{round(np.mean(self.df_cell.frac_peak)* 100, 2)}%',
+            help_info = 'The proportion of fragments in a cell to overlap with a peak.'           
+        )
+
+        self.add_metric(
+            name = 'Fraction of fragments overlap with tss in cells',
+            value = f'{round(np.mean(self.df_cell.frac_tss)* 100, 2)}%',
+            help_info = 'The proportion of fragments in a cell to overlap with a tss.'           
+        )
+        
+        self.add_metric(
+            name = 'Fraction of fragments overlap with enhancer in cells',
+            value = f'{round(np.mean(self.df_cell.frac_enhancer)* 100, 2)}%',
+            help_info = 'The proportion of fragments in a cell to overlap with a enhancer sequence.'           
+        )
+        
+        self.add_metric(
+            name = 'Fraction of fragments overlap with promoter in cells',
+            value = f'{round(np.mean(self.df_cell.frac_promoter)* 100, 2)}%',
+            help_info = 'The proportion of fragments in a cell to overlap with a promoter sequence.'           
+        )
+        
+        self.add_metric(
+            name = 'Fraction of fragments in cells that are mitochondrial',
+            value = f'{round(np.mean(self.df_cell.frac_mito)* 100, 2)}%',
+            help_info = 'The proportion of fragments in a cell that are mitochondrial.'           
+        )
+
+        self.df_cell.sort_values(by='total_frags', ascending=False, inplace=True)
+        self.add_data(chart=get_plot_elements.plot_barcode_rank(self.df_cell, log_uniform=False))
+        
+        
+        
+        
