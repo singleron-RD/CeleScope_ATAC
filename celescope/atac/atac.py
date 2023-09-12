@@ -75,6 +75,9 @@ def atac(args):
     with ATAC(args) as runner:
         runner.run()
     
+    with Mapping(args) as runner:
+        runner.run()
+        
     with Cells(args) as runner:
         runner.run()
         
@@ -138,5 +141,41 @@ class Cells(Step):
         self.add_data(chart=get_plot_elements.plot_barcode_rank(self.df_cell, log_uniform=False))
         
         
+class Mapping(Step):
+    def __init__(self, args, display_title=None):
+        super().__init__(args, display_title=display_title)
+
+        self.df_mapping = pd.read_csv(f"{self.outdir}/scPipe_atac_stats/stats_file_align.txt", header=0, names=["name", "value"])
+        self.mapping_dict = dict(zip(list(self.df_mapping.name), list(self.df_mapping.value)))
+    
+    def run(self):
+
+        self.add_metric(
+            name = 'Confidently mapped read pairs',
+            value = self.mapping_dict["Mapped_fragments"],
+            total = self.mapping_dict["Total_fragments"],
+            help_info = 'Fraction of mapped read pairs'
+        )
+
+        self.add_metric(
+            name = 'Unique mapped read pairs',
+            value = self.mapping_dict["Uniquely_mapped_fragments"],
+            total = self.mapping_dict["Total_fragments"],
+            help_info = 'Fraction of unique mapped read pairs'
+        )
+
+        self.add_metric(
+            name = 'Multi mapped read pairs',
+            value = self.mapping_dict["Multi_mapping_fragments"],
+            total = self.mapping_dict["Total_fragments"],
+            help_info = 'Fraction of multi mapped read pairs'
+        )
         
+        self.add_metric(
+            name = 'Unmapped read pairs',
+            value = self.mapping_dict["Unmapped_fragments"],
+            total = self.mapping_dict["Total_fragments"],
+            help_info = 'Fraction of unmapped read pairs'
+        )
+         
         

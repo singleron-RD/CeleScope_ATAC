@@ -1,5 +1,10 @@
 {% include "html/utils/start.html"%}
 
+    {% if mapping_summary is defined %}
+    {% set step_summary = mapping_summary %}
+    {% include "html/utils/step.html"%}
+    {% endif %}
+    
     {% if cells_summary is defined %}
     {% set step_summary = cells_summary %}
     {% include "html/atac/cells.html"%}

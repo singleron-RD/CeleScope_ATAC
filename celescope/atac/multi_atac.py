@@ -32,7 +32,7 @@ class Multi_bulk_vdj(Multi):
 
     def merge_report(self):
         step = "merge_report"
-        _index = self.STEPS.index('assemble') + 1
+        _index = self.STEPS.index('atac') + 1
         steps_str = ",".join(self.STEPS[:_index] + __SUB_STEPS__ + self.STEPS[_index:-1])
         samples = ','.join(self.fq_dict.keys())
         app = TOOLS_DIR + '/merge_table.py'
