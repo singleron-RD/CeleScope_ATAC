@@ -8,7 +8,7 @@ from celescope.__init__ import ROOT_PATH
 from celescope.tools import get_plot_elements
 
 
-__SUB_STEPS__ = ['cells']
+__SUB_STEPS__ = ['mapping', 'cells']
 
 
 def get_opts_atac(parser, sub_program):
