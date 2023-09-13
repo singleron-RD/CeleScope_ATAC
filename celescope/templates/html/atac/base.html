@@ -10,4 +10,9 @@
     {% include "html/atac/cells.html"%}
     {% endif %}
 
+    {% if analysis_summary is defined %}
+    {% set step_summary = analysis_summary %}
+    {% include "html/atac/analysis.html"%}
+    {% endif %}
+
 {% include "html/utils/end.html"%}
