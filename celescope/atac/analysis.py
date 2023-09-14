@@ -1,6 +1,7 @@
 import subprocess
 import pandas as pd 
-from celescope.tools.plotly_plot import Insert_plot, Tss_plot, Peak_plot
+import math
+from celescope.tools.plotly_plot import Insert_plot, Tss_plot, Peak_plot, Tsne_plot
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 from celescope.__init__ import ROOT_PATH
@@ -36,7 +37,7 @@ class Analysis(Step):
         self.peak_res = args.peak_res
         
         self.insert_size_data = f'{self.outdir}/insert_size.csv'
-        self.cell_umap_info = f'{self.outdir}/cell_umap.csv'
+        self.cell_tsne_info = f'{self.outdir}/cell_tsne.csv'
 
     @utils.add_log
     def gen_plot_data(self):
@@ -49,7 +50,7 @@ class Analysis(Step):
             f"--insert_size_data {self.insert_size_data} "
             f"--binary_matrix {self.binary_matrix} "
             f"--sce_rds {self.sce_rds} "
-            f"--cell_umap_info {self.cell_umap_info} "
+            f"--cell_tsne_info {self.cell_tsne_info} "
         )
         subprocess.check_call(cmd, shell=True)
 
@@ -86,6 +87,14 @@ class Analysis(Step):
             value = round(max(df_tss.agg_tss_scores), 2),
             help_info = 'Maximum value of the transcription-start-site (TSS) profile.The TSS profile is the summed accessibility signal (defined as number of cut sites per base) in a window of 2,000 bases around all the annotated TSSs, normalized by the minimum signal in the window.'           
         )
+        
+        df_tsne = pd.read_csv(self.cell_tsne_info)
+        tsne_cluster = Tsne_plot(df_tsne, 'cluster').get_plotly_div()
+        self.add_data(tsne_cluster=tsne_cluster)
+
+        df_tsne['log10 Fragments'] = df_tsne['total_frags'].apply(lambda x: math.log10(x))
+        tsne_fragment = Tsne_plot(df_tsne, 'log10 Fragments', discrete=False).get_plotly_div()
+        self.add_data(tsne_fragment=tsne_fragment)
 
     def run(self):
         self.gen_plot_data()
