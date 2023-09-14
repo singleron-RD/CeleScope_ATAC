@@ -17,7 +17,7 @@ def get_opts_analysis(parser, sub_program):
         parser.add_argument('--cell_qc_metrics', help='cell qc metrics csv file.', required=True)
         parser.add_argument('--binary_matrix', help='binary matrix rds file.', required=True)
         parser.add_argument('--sce_rds', help='scPipe atac SCEobject rds file.', required=True)
-        parser.add_argument('--peak_res', help='peak result excel file.', required=True)
+        parser.add_argument('--peak_res', help='narrowPeak file.', required=True)
     return parser
 
 
@@ -70,12 +70,8 @@ class Analysis(Step):
         Peakplot = Peak_plot(df=df_cell).get_plotly_div()
         self.add_data(Peak_plot=Peakplot)
 
-        with open(self.peak_res) as fh:
-            for line in fh.readlines():
-                if '# total tags in treatment' in line:
-                    total_peak = line.split(':')[-1].strip()
-                    break
-                
+        df_peak = pd.read_csv(self.peak_res, sep='\t', header=None)
+        total_peak = df_peak.shape[0]
         self.add_metric(
             name = 'Number of peaks',
             value = format(int(total_peak), ','),

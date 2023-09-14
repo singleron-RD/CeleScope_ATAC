@@ -37,7 +37,7 @@ class Multi_bulk_vdj(Multi):
         cell_qc_metrics = f'{self.outdir_dic[sample]["atac"]}/cell_qc_metrics.csv'
         binary_matrix = f'{self.outdir_dic[sample]["atac"]}/binary_matrix.rds'
         sce_rds = f'{self.outdir_dic[sample]["atac"]}/scPipe_atac_SCEobject.rds'
-        peak_res = f'{self.outdir_dic[sample]["atac"]}/NA_peaks.xls'
+        peak_res = f'{self.outdir_dic[sample]["atac"]}/NA_peaks.narrowPeak'
         
         cmd_line = self.get_cmd_line(step, sample)
         cmd = (
