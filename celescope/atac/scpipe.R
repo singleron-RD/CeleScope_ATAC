@@ -73,7 +73,7 @@ sc_atac_feature_counting (fragment_file = file.path(output_folder, "fragments.be
                           bam_tags      = list(bc="CB", mb="OX"),
                           feature_type  = "peak",
                           organism      = organism,
-                          cell_calling  = "none",
+                          cell_calling  = FALSE,
                           min_uniq_frags = 0,
                           min_frac_peak = 0,
                           min_frac_promoter = 0,
