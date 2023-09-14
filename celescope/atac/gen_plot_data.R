@@ -7,6 +7,7 @@ library(RANN)
 library(umap)
 library(igraph)
 library(tibble)
+library(Rtsne)
 
 parser <- ArgumentParser()
 parser$add_argument("--feature_matrix",help="unfiltered feature matrix rds file.", required=TRUE)
@@ -14,7 +15,7 @@ parser$add_argument("--fragments",help="fragments bed file.", required=TRUE)
 parser$add_argument("--insert_size_data",help="insert size data csv file", required=TRUE)
 parser$add_argument("--binary_matrix",help="binary matrix rds file.", required=TRUE)
 parser$add_argument("--sce_rds",help="scPipe atac SCEobject rds file", required=TRUE)
-parser$add_argument("--cell_umap_info", help='cell qc metrics with umap coord csv file.', required=TRUE)
+parser$add_argument("--cell_tsne_info", help='cell qc metrics with tsne coord csv file.', required=TRUE)
 args <- parser$parse_args()
 
 feature_matrix <- args$feature_matrix
@@ -22,7 +23,7 @@ fragments <- args$fragments
 insert_size_data <- args$insert_size_data
 binary_matrix <- args$binary_matrix
 sce_rds <- args$sce_rds
-cell_umap_info <- args$cell_umap_info
+cell_tsne_info <- args$cell_tsne_info
 
 # Insert size distribution
 unfiltered_mtx <- readRDS(feature_matrix)
@@ -88,17 +89,23 @@ km         <- igraph::cluster_louvain(g)
 com        <- km$membership
 names(com) <- km$names
 
-# running UMAP ------------------------------
-norm.data.umap    <- umap::umap(mat_pcs)
-df_umap           <- as.data.frame(norm.data.umap$layout)
-colnames(df_umap) <- c("UMAP1", "UMAP2")
-df_umap$barcode   <- rownames(mat_pcs)
+# # running UMAP ------------------------------
+# norm.data.umap    <- umap::umap(mat_pcs)
+# df_umap           <- as.data.frame(norm.data.umap$layout)
+# colnames(df_umap) <- c("UMAP1", "UMAP2")
+# df_umap$barcode   <- rownames(mat_pcs)
 
-df_umap <- dplyr::left_join(df_umap, enframe(com), by = c("barcode" = "name")) %>%
+# running tSNE ------------------------------
+norm.data.tsne    <- Rtsne(mat_pcs)
+df_tsne           <- as.data.frame(norm.data.tsne$Y)
+colnames(df_tsne) <- c("tSNE_1", "tSNE_2")
+df_tsne$barcode   <- rownames(mat_pcs)
+
+df_tsne <- dplyr::left_join(df_tsne, enframe(com), by = c("barcode" = "name")) %>%
   dplyr::rename(cluster = value) %>%
   dplyr::mutate(cluster = as.factor(cluster))
 
 sce_coldata <- colData(sce)
-  df_umap <- base::merge(df_umap, sce_coldata, by.x = "barcode", by.y = "row.names", all.x = TRUE) 
+  df_tsne <- base::merge(df_tsne, sce_coldata, by.x = "barcode", by.y = "row.names", all.x = TRUE) 
 
-write.csv(df_umap, cell_umap_info, quote=FALSE, row.names=FALSE)
+write.csv(df_tsne, cell_tsne_info, quote=FALSE, row.names=FALSE)
