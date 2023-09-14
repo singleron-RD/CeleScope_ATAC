@@ -67,8 +67,8 @@ class ATAC(Step):
         os.system(cmd)
     
     def run(self):
-        #self.run_scpipe()
-        self.cp_report()
+        self.run_scpipe()
+        #self.cp_report()
 
 
 def atac(args):

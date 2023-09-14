@@ -81,7 +81,7 @@ sc_atac_feature_counting (fragment_file = file.path(output_folder, "fragments.be
                           exclude_regions = TRUE,
                           output_folder = output_folder,
                           fix_chr       = "none",
-                          create_report = TRUE
+                          create_report = FALSE
                           )
 
 feature_matrix <- readRDS(file.path(output_folder, "unfiltered_feature_matrix.rds"))
@@ -94,4 +94,4 @@ sce <- sc_atac_create_sce(input_folder = output_folder,
                    organism = organism,
                    feature_type = "peak",
                    pheno_data = NULL,
-                   report = TRUE)
+                   report = FALSE)
