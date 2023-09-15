@@ -3,7 +3,7 @@ from celescope.atac.__init__ import __ASSAY__
 from celescope.atac.atac import __SUB_STEPS__
 
 
-class Multi_bulk_vdj(Multi):
+class Multi_atac(Multi):
     """
     ## Usage
     ```
@@ -70,7 +70,7 @@ class Multi_bulk_vdj(Multi):
 
 
 def main():
-    multi = Multi_bulk_vdj(__ASSAY__)
+    multi = Multi_atac(__ASSAY__)
     multi.run()
 
 
