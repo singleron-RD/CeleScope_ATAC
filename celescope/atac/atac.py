@@ -12,17 +12,13 @@ __SUB_STEPS__ = ['mapping', 'cells']
 
 
 def get_opts_atac(parser, sub_program):
-    parser.add_argument('--reference', help='reference path', required=True)
-    parser.add_argument('--organism', help='hg38 for human, mm10 for mouse', required=True)
-    parser.add_argument(
-        '--rm_pcr_dup', 
-        help="Whether or not to remove PCR duplicate. High-quality read pairs that are deemed to be PCR duplicates.",
-        action='store_true')
+    parser.add_argument('--reference ', help='Genome reference fasta file', required=True)
+    parser.add_argument('--giggleannotation ', help='Path of the giggle annotation file', required=True)
+    parser.add_argument('--species ', choices=['GRCh38', 'GRCm38'] help='GRCh38 for human, GRCm38 for mouse', required=True)
+
     if sub_program:
         s_common(parser)
-        parser.add_argument('--r1', help='R1 reads from step Barcode.', required=True)
-        parser.add_argument('--r2', help='R2 reads from step Barcode.', required=True)
-        parser.add_argument('--r3', help='R3 reads from step Barcode.', required=True)
+        parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
     return parser
 
 
@@ -35,51 +31,62 @@ class ATAC(Step):
 
     def __init__(self, args, display_title=None):
         Step.__init__(self, args, display_title=display_title)
-        self.r1 = args.r1
-        self.r2 = args.r2
-        self.r3 = args.r3
+        self.giggleannotation = args.giggleannotation
+        self.input_path = args.input_path
+        self.species = args.species
         self.reference = args.reference
-        self.organism = args.organism
-        self.rm_pcr_dup = args.rm_pcr_dup
         self.outdir = os.path.abspath(self.outdir)
     
     @utils.add_log
-    def run_scpipe(self):
-        """run scpipe
+    def run_maestro(self):
+        """run maestro
         """
+        # Step 1. Configure the MAESTRO workflow
         cmd = (
-            f"Rscript {ROOT_PATH}/atac/scpipe.R "
-            f"--sample {self.sample} "
-            f"--r1 {self.r1} "
-            f"--r2 {self.r2} "
-            f"--r3 {self.r3} "
-            f"--thread {self.thread} "
-            f"--outdir {self.outdir} "
-            f"--reference {self.reference} "
-            f"--organism {self.organism} "
-            f"--rm_pcr_dup {self.rm_pcr_dup} "
+            f"MAESTRO scatac-init --input_path {self.input_path} "
+            f"--gzip --species {self.species} --platform 10x-genomics --format fastq --mapping chromap "
+            f"--giggleannotation {self.giggleannotation} "
+            f"----fasta {self.reference}/{self.species}_genome.fa "
+            f"--index {self.reference}/{self.species}_chromap.index "
+            f"--whitelist {self.whitelist}"
+            f"--cores {self.thread} --directory {self.outdir} "
+            f"--annotation --method RP-based --signature human.immune.CIBERSORT "
+            f"--rpmodel Enhanced "
+            f"--peak_cutoff 100 --count_cutoff 1000 --frip_cutoff 0.2 --cell_cutoff 50 "
+        )
+        subprocess.check_call(cmd, shell=True)
+        
+        # Step 2. Configure samples.json file
+        cmd = (
+            f"MAESTRO samples-init --assay_type scatac --platform 10x-genomics --data_type fastq --data_dir {self.input_path}"
+        )
+        
+        cwd = os.getcwd()
+        os.chdir(self.outdir)
+        subprocess.check_call(cmd, shell=True)
+        # change dir back 
+        os.chdir(cwd)
+        
+        # Step 3. Run snakemake pipeline
+        cmd = (
+            f"snakemake -j {self.thread}"
         )
         subprocess.check_call(cmd, shell=True)
     
-    @utils.add_log
-    def cp_report(self):
-        cmd = (f"cp {self.outdir}/scPipe_atac_stats/scPipe_atac_report.html {self.sample}")
-        os.system(cmd)
     
     def run(self):
-        self.run_scpipe()
-        #self.cp_report()
+        self.run_maestro()
 
 
 def atac(args):
     with ATAC(args) as runner:
         runner.run()
     
-    with Mapping(args) as runner:
-        runner.run()
+    # with Mapping(args) as runner:
+    #     runner.run()
         
-    with Cells(args) as runner:
-        runner.run()
+    # with Cells(args) as runner:
+    #     runner.run()
         
         
 class Cells(Step):
