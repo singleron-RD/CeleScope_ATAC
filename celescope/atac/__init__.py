@@ -1,2 +1,2 @@
-STEPS = ["sample", "barcode", "atac", "analysis"]
+STEPS = ["sample", "barcode", "atac"]
 __ASSAY__ = 'atac'

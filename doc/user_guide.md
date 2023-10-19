@@ -29,19 +29,27 @@ pip install celescope_atac
 ### Homo sapiens
 
 ```
-mkdir -p /genome/atac/human
-cd /genome/atac/human
-wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/latest/hg38.fa.gz
-gunzip hg38.fa.gz
+mkdir -p /genome/scATAC
+cd /genome/scATAC
+wget http://cistrome.org/~galib/MAESTRO/references/scATAC/Refdata_scATAC_MAESTRO_GRCh38_1.1.0.tar.gz
+tar -xvzf Refdata_scATAC_MAESTRO_GRCh38_1.1.0.tar.gz
+wget http://cistrome.org/~galib/MAESTRO/references/giggle.all.tar.gz
+tar -xvzf giggle.all.tar.gz
+cd Refdata_scATAC_MAESTRO_GRCh38_1.1.0
+chromap -i -r GRCh38_genome.fa -o GRCh38_chromap.index
 ```
 
 ### Mus musculus
 
 ```
-mkdir -p /genome/atac/mouse
-cd /genome/atac/mouse
-wget https://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/latest/mm10.fa.gz
-gunzip mm10.fa.gz
+mkdir -p /genome/scATAC
+cd /genome/scATAC
+wget http://cistrome.org/~galib/MAESTRO/references/scATAC/Refdata_scATAC_MAESTRO_GRCm38_1.1.0.tar.gz
+tar -xvzf Refdata_scATAC_MAESTRO_GRCm38_1.1.0.tar.gz
+wget http://cistrome.org/~galib/MAESTRO/references/giggle.all.tar.gz
+tar -xvzf giggle.all.tar.gz
+cd Refdata_scATAC_MAESTRO_GRCm38_1.1.0
+chromap -i -r GRCm38_genome.fa -o GRCm38_chromap.index
 ```
 
 2. Generate scripts for each sample
