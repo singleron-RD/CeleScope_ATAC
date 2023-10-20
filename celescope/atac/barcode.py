@@ -28,8 +28,10 @@ class Barcode(super_barcode.Barcode):
         self.fq3_list = args.fq3.split(",")
 
     def open_files(self):
-
-        self.out_fq3 = f'{self.out_prefix}_3.fq{self.suffix}'
+        
+        self.out_fq2 = f'{self.out_prefix}_S1_L001_R2_001.fastq{self.suffix}'
+        self.out_fq1 = f'{self.out_prefix}_S1_L001_R1_001.fastq{self.suffix}'
+        self.out_fq3 = f'{self.out_prefix}_S1_L001_R3_001.fastq{self.suffix}'
 
         self.fh_fq1 = xopen(self.out_fq1, 'w')
         self.fh_fq2 = xopen(self.out_fq2, 'w')

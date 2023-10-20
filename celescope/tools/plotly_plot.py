@@ -44,7 +44,7 @@ class Insert_plot(Plotly_plot):
     
     def set_fig(self):
 
-        hist_data = [self._df["isize"]]
+        hist_data = [self._df["size"]]
         group_labels = ['Sample']
         colors = ['#1F77B4']
 
@@ -57,7 +57,8 @@ class Insert_plot(Plotly_plot):
             xaxis_title = "Insert Size(bp)", yaxis_title = "Density", font=dict(size=14,color="Black"),
             showlegend=False,
             margin=dict(l=50, r=0, t=30, b=30),
-            plot_bgcolor="#FFFFFF"
+            plot_bgcolor="#FFFFFF",
+            width=470, height=313,
         )
         
 
@@ -76,7 +77,7 @@ class Tss_plot(Plotly_plot):
                           xaxis_title = "Distance from TSS(bp)", yaxis_title = "Aggregate TSS score", font=dict(size=14,color="Black"),
                           showlegend=False,
                           margin=dict(l=50, r=0, t=30, b=30),
-                          plot_bgcolor="#FFFFFF"
+                          plot_bgcolor="#FFFFFF",
         )
         
     

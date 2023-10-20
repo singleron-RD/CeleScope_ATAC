@@ -5,15 +5,16 @@ import os
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 from celescope.tools import get_plot_elements
+from celescope.tools.plotly_plot import Insert_plot
 
 
 __SUB_STEPS__ = ['mapping', 'cells']
 
 
 def get_opts_atac(parser, sub_program):
-    parser.add_argument('--reference ', help='Genome reference fasta file', required=True)
-    parser.add_argument('--giggleannotation ', help='Path of the giggle annotation file', required=True)
-    parser.add_argument('--species ', choices=['GRCh38', 'GRCm38'], help='GRCh38 for human, GRCm38 for mouse', required=True)
+    parser.add_argument('--reference', help='Genome reference fasta file', required=True)
+    parser.add_argument('--giggleannotation', help='Path of the giggle annotation file', required=True)
+    parser.add_argument('--species', choices=['GRCh38', 'GRCm38'], help='GRCh38 for human, GRCm38 for mouse', required=True)
 
     if sub_program:
         s_common(parser)
@@ -30,8 +31,9 @@ class ATAC(Step):
 
     def __init__(self, args, display_title=None):
         Step.__init__(self, args, display_title=display_title)
+        
         self.giggleannotation = args.giggleannotation
-        self.input_path = args.input_path
+        self.input_path = os.path.abspath(args.input_path)
         self.species = args.species
         self.reference = args.reference
         self.outdir = os.path.abspath(self.outdir)
@@ -43,7 +45,7 @@ class ATAC(Step):
         # Step 1. Configure the MAESTRO workflow
         cmd = (
             f"MAESTRO scatac-init --input_path {self.input_path} "
-            f"--gzip --species {self.species} --platform 10x-genomics --format fastq --mapping chromap "
+            f"--species {self.species} --platform 10x-genomics --format fastq --mapping chromap "
             f"--giggleannotation {self.giggleannotation} "
             f"--fasta {self.reference}/{self.species}_genome.fa "
             f"--index {self.reference}/{self.species}_chromap.index "
@@ -51,7 +53,7 @@ class ATAC(Step):
             f"--annotation --method RP-based --signature human.immune.CIBERSORT "
             f"--rpmodel Enhanced "
             f"--peak_cutoff 100 --count_cutoff 1000 --frip_cutoff 0.2 --cell_cutoff 50 "
-            # f"--whitelist {self.whitelist}"
+            f"--whitelist /SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/737K-cratac-v1_rev.txt "
         )
         subprocess.check_call(cmd, shell=True)
         
@@ -79,11 +81,11 @@ class ATAC(Step):
 
 
 def atac(args):
-    with ATAC(args) as runner:
-        runner.run()
-    
-    # with Mapping(args) as runner:
+    # with ATAC(args) as runner:
     #     runner.run()
+    
+    with Mapping(args) as runner:
+        runner.run()
         
     # with Cells(args) as runner:
     #     runner.run()
@@ -152,37 +154,41 @@ class Mapping(Step):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.df_mapping = pd.read_csv(f"{self.outdir}/scPipe_atac_stats/stats_file_align.txt", header=0, names=["name", "value"])
-        self.mapping_dict = dict(zip(list(self.df_mapping.name), list(self.df_mapping.value)))
+        self.df_mapping = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
+                                      header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
     
     def run(self):
 
-        self.add_metric(
-            name = 'Confidently mapped read pairs',
-            value = self.mapping_dict["Mapped_fragments"],
-            total = self.mapping_dict["Total_fragments"],
-            help_info = 'Fraction of mapped read pairs'
-        )
-
-        self.add_metric(
-            name = 'Unique mapped read pairs',
-            value = self.mapping_dict["Uniquely_mapped_fragments"],
-            total = self.mapping_dict["Total_fragments"],
-            help_info = 'Fraction of unique mapped read pairs'
-        )
-
-        self.add_metric(
-            name = 'Multi mapped read pairs',
-            value = self.mapping_dict["Multi_mapping_fragments"],
-            total = self.mapping_dict["Total_fragments"],
-            help_info = 'Fraction of multi mapped read pairs'
+        valid_reads = self.get_slot_key(
+            slot='metrics',
+            step_name='barcode',
+            key='Valid Reads',
         )
         
+        self.df_mapping["size"] = self.df_mapping["chromEnd"] - self.df_mapping["chromStart"]
+        
         self.add_metric(
-            name = 'Unmapped read pairs',
-            value = self.mapping_dict["Unmapped_fragments"],
-            total = self.mapping_dict["Total_fragments"],
-            help_info = 'Fraction of unmapped read pairs'
+            name = 'Confidently Unique mapped read pairs',
+            value = sum(self.df_mapping['count']),
+            total = valid_reads,
+            help_info = 'Fraction of Unique mapped read pairs'
         )
+
+        self.add_metric(
+            name = 'Fragments in nucleosome-free regions',
+            value = sum(self.df_mapping[self.df_mapping['size']<=124]['count']),
+            total = sum(self.df_mapping['count']),
+            help_info = 'Fraction of high-quality fragments smaller than 124 basepairs.'
+        )
+
+        self.add_metric(
+            name = 'Fragments flanking a single nucleosome',
+            value = sum(self.df_mapping[ (self.df_mapping['size']>124) & (self.df_mapping['size']<=296)]['count']),
+            total = sum(self.df_mapping['count']),
+            help_info = 'Fraction of high-quality fragments between 124 and 296 basepairs.'
+        )
+        self.df_mapping = self.df_mapping[self.df_mapping['size'] < 800]
+        Insertplot = Insert_plot(df=self.df_mapping).get_plotly_div()
+        self.add_data(Insert_plot=Insertplot)
          
         
