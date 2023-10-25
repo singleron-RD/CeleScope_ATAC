@@ -98,7 +98,7 @@ class Peak_plot(Plotly_plot):
         self._df['cell_called'] = self._df.apply(self.label, axis=1)
         self._df.sort_values("cell_called", ascending=False, inplace=True)
         
-        self._fig = px.scatter(self._df, x="total_frags", y="frac_peak", color="cell_called",color_discrete_sequence=["grey", "orange"]
+        self._fig = px.scatter(self._df, x="fragments", y="frac_peak", color="cell_called",color_discrete_sequence=["grey", "orange"]
                  )
         self._fig.update_layout(
             width=470, height=313,
@@ -114,22 +114,22 @@ class Peak_plot(Plotly_plot):
         self._fig.update_traces(marker_size=3)
         
 
-class Tsne_plot(Plotly_plot):
+class Umap_plot(Plotly_plot):
 
-    def __init__(self, df_tsne, feature_name, discrete=True):
-        super().__init__(df_tsne)
+    def __init__(self, df_umap, feature_name, discrete=True):
+        super().__init__(df_umap)
 
         self.feature_name = feature_name
         self.discrete = discrete
         title_feature_name = feature_name[0].upper() + feature_name[1:]
-        self.title = f"t-SNE plot Colored by {title_feature_name}"
+        self.title = f"UMAP plot Colored by {title_feature_name}"
 
         self._layout = {}
         self._dot_size = 4
         self._df['size'] = self._dot_size
         self._df['barcode_index'] = list(range(1, len(self._df) + 1))
-        self._str_coord1 = "tSNE_1"
-        self._str_coord2 = "tSNE_2"
+        self._str_coord1 = "UMAP_1"
+        self._str_coord2 = "UMAP_2"
         self.axes_config = {
             'showgrid': True,
             'gridcolor': '#F5F5F5',
@@ -141,7 +141,7 @@ class Tsne_plot(Plotly_plot):
         }
 
         self.scatter_config = {
-            'data_frame': df_tsne,
+            'data_frame': df_umap,
             'title': self.title,
             'x': self._str_coord1,
             'y': self._str_coord2,
@@ -167,15 +167,15 @@ class Tsne_plot(Plotly_plot):
     def get_plotly_div(self):
 
         if self.discrete:
-            self.discrete_tsne_plot()
+            self.discrete_umap_plot()
         else:
-            self.continuous_tsne_plot()
+            self.continuous_umap_plot()
         self.update_fig()
 
         return self.plotly_plot()
 
     @utils.add_log
-    def discrete_tsne_plot(self):
+    def discrete_umap_plot(self):
 
         sum_df = self._df.groupby([self.feature_name]).agg("count").iloc[:, 0]
         percent_df = sum_df.transform(lambda x: round(x / sum(x) * 100, 2))
@@ -194,7 +194,7 @@ class Tsne_plot(Plotly_plot):
         )
 
     @utils.add_log
-    def continuous_tsne_plot(self):
+    def continuous_umap_plot(self):
 
         self._fig = px.scatter(
             **self.scatter_config,

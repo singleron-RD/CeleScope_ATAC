@@ -60,7 +60,7 @@ def counter_barcode_rank_plot_data(count_data, log_uniform=False):
     # count_data = pd.read_csv(count_data_path, index_col=0, sep=',')
     cell_bc = np.array(count_data[count_data['cell_called'] == True].index)
     sorted_bc = np.array(count_data.index)
-    sorted_counts = np.array(count_data['fragments'])
+    sorted_counts = np.array(count_data['overlap_peaks'])
     cell_nums = len(cell_bc)
     total_bc = len(sorted_bc)
     # find the first barcode which is not a cell
