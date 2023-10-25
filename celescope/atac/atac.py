@@ -6,7 +6,6 @@ from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 from celescope.tools import get_plot_elements
 from celescope.tools.plotly_plot import Insert_plot
-from celescope.__init__ import ROOT_PATH
 
 
 __SUB_STEPS__ = ['mapping', 'cells']
@@ -82,11 +81,11 @@ class ATAC(Step):
 
 
 def atac(args):
-    # with ATAC(args) as runner:
-    #     runner.run()
+    with ATAC(args) as runner:
+        runner.run()
     
-    # with Mapping(args) as runner:
-    #     runner.run()
+    with Mapping(args) as runner:
+        runner.run()
         
     with Cells(args) as runner:
         runner.run()
@@ -100,23 +99,32 @@ class Cells(Step):
         self.df_barcode = pd.read_csv(f"{self.outdir}/Result/QC/{self.sample}/singlecell.txt",
                                       header=None, sep='\t', names=["barcode", "fragments", "fragments_overlapping_promoter"])
         self.df_cell_barcode = self.df_barcode[self.df_barcode["barcode"].isin(self.cell_barcode)]
-        self.peak_count_h5 = f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_peak_count.h5"
-        self.peak_count_df = f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_peak_count.txt"
-
+        self.df_fragments = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
+                                      header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
+        self.df_peaks = pd.read_csv(f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_final_peaks.bed",
+                                    header=None, sep='\t', names=["chr", "start", "end"])
+        self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.csv"
+    
     @utils.add_log
-    def convert_peak_count(self):
-        """convert peak count h5 to txt file.
+    def count_overlap_peak(self):
+        """count fragments overlapping peaks
         """
-        cmd = (
-            f"Rscript {ROOT_PATH}/atac/peak_count.R "
-            f"--peak_count_h5 {self.peak_count_h5} "
-            f"--peak_count_df {self.peak_count_df} "
-        )
-        subprocess.check_call(cmd, shell=True)
-        
+        final_df = pd.DataFrame()
+        for _, data_peak in self.df_peaks.iterrows():
+            peak_info = dict(data_peak)
+            frag_chr = self.df_fragments[self.df_fragments["chr"] == peak_info["chr"]]
+            frag_overlap_peak = frag_chr[ (frag_chr["start"] >= peak_info["start"]) & (frag_chr["end"] <= peak_info["end"])] 
+            final_df = pd.concat([final_df, frag_overlap_peak])
+            final_df_count = final_df.groupby('barcode', as_index=False).agg({'count': 'sum'})
+            
+            self.df_barcode = pd.merge(self.df_barcode, final_df_count, on='barcode', how='outer').fillna(0)
+            self.df_barcode = self.df_barcode.rename(columns={'count': 'overlap_peaks'})
+            self.df_barcode['frac_peak'] = round(self.df_barcode['overlap_peaks'] / self.df_barcode['fragments'], 4)
+            self.df_barcode['cell_called'] = self.df_barcode['barcode'].apply(lambda x: True if x in self.cell_barcode else False)
+            self.df_barcode.to_csv(self.df_cell_metrics, sep='\t', index=False)
+            
     def run(self):
-        
-        self.convert_peak_count()
+        self.count_overlap_peak()
         
         cell_num = len(self.cell_barcode)
         self.add_metric(
@@ -144,11 +152,10 @@ class Cells(Step):
             help_info = 'Fraction of high-quality fragments with a valid barcode that are associated with cell-containing partitions.'           
         )
 
-        df_peak = pd.read_csv(self.peak_count_df)
-        peak_count = sum(df_peak.peak_count)
+        frac_peak = self.df_barcode[self.df_barcode['cell_called']==True]['frac_peak'].mean()
         self.add_metric(
             name = 'Fraction of Fragments Overlap with Peaks in Cells',
-            value = f'{round(peak_count / cell_fragments * 100, 2)}%',
+            value = f'{round(frac_peak * 100, 2)}%',
             help_info = 'The proportion of fragments in a cell to overlap with a peak.'           
         )
         
@@ -166,8 +173,8 @@ class Cells(Step):
             help_info = 'The median number of high-quality fragments per cell barcode'           
         )
         
-        # self.df_cell.sort_values(by='total_frags', ascending=False, inplace=True)
-        # self.add_data(chart=get_plot_elements.plot_barcode_rank(self.df_cell, log_uniform=False))
+        self.df_barcode.sort_values(by='fragments', ascending=False, inplace=True)
+        self.add_data(chart=get_plot_elements.plot_barcode_rank(self.df_barcode, log_uniform=False))
         
         
 class Mapping(Step):
