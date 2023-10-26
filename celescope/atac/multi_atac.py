@@ -28,22 +28,14 @@ class Multi_atac(Multi):
 
     def analysis(self, sample):
         step = 'analysis'
-        feature_matrix = f'{self.outdir_dic[sample]["atac"]}/unfiltered_feature_matrix.rds'
-        fragments = f'{self.outdir_dic[sample]["atac"]}/fragments.bed'
-        tss_data = f'{self.outdir_dic[sample]["atac"]}/scPipe_atac_stats/tss_plot_data.csv'
-        cell_qc_metrics = f'{self.outdir_dic[sample]["atac"]}/cell_qc_metrics.csv'
-        binary_matrix = f'{self.outdir_dic[sample]["atac"]}/binary_matrix.rds'
-        sce_rds = f'{self.outdir_dic[sample]["atac"]}/scPipe_atac_SCEobject.rds'
-        peak_res = f'{self.outdir_dic[sample]["atac"]}/NA_peaks.narrowPeak'
+        cell_qc_metrics = f'{self.outdir_dic[sample]["atac"]}/Result/Analysis/{sample}/cell_qc_metrics.tsv'
+        sce_rds = f'{self.outdir_dic[sample]["atac"]}/Result/Analysis/{sample}/{sample}_scATAC_Object.rds'
+        peak_res = f'{self.outdir_dic[sample]["atac"]}/Result/Analysis/{sample}/{sample}_final_peaks.bed'
         
         cmd_line = self.get_cmd_line(step, sample)
         cmd = (
             f'{cmd_line} '
-            f'--feature_matrix {feature_matrix} '
-            f'--fragments {fragments} '
-            f'--tss_data {tss_data} '
             f'--cell_qc_metrics {cell_qc_metrics} '
-            f'--binary_matrix {binary_matrix} '
             f'--sce_rds {sce_rds} '
             f'--peak_res {peak_res} '
         )

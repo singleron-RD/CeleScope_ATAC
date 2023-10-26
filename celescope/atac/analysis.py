@@ -1,7 +1,7 @@
 import subprocess
 import pandas as pd 
 import math
-from celescope.tools.plotly_plot import Insert_plot, Tss_plot, Peak_plot, Tsne_plot
+from celescope.tools.plotly_plot import Peak_plot, Umap_plot
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 from celescope.__init__ import ROOT_PATH
@@ -11,11 +11,7 @@ def get_opts_analysis(parser, sub_program):
 
     if sub_program:
         s_common(parser)
-        parser.add_argument('--feature_matrix', help='unfiltered feature matrix rds file.', required=True)
-        parser.add_argument('--fragments', help='fragments bed file.', required=True)
-        parser.add_argument('--tss_data', help='tss plot data csv file.', required=True)
-        parser.add_argument('--cell_qc_metrics', help='cell qc metrics csv file.', required=True)
-        parser.add_argument('--binary_matrix', help='binary matrix rds file.', required=True)
+        parser.add_argument('--cell_qc_metrics', help='cell qc metrics file.', required=True)
         parser.add_argument('--sce_rds', help='scPipe atac SCEobject rds file.', required=True)
         parser.add_argument('--peak_res', help='narrowPeak file.', required=True)
     return parser
@@ -27,30 +23,20 @@ class Analysis(Step):
 
     def __init__(self, args, display_title=None):
         Step.__init__(self, args, display_title=display_title)
-        
-        self.feature_matrix = args.feature_matrix
-        self.fragments = args.fragments
-        self.tss_data = args.tss_data
+
         self.cell_qc_metrics = args.cell_qc_metrics
-        self.binary_matrix = args.binary_matrix
         self.sce_rds = args.sce_rds
         self.peak_res = args.peak_res
-        
-        self.insert_size_data = f'{self.outdir}/insert_size.csv'
-        self.cell_tsne_info = f'{self.outdir}/cell_tsne.csv'
+        self.meta_data = f'{self.outdir}/meta.csv'
 
     @utils.add_log
     def gen_plot_data(self):
-        """generate data for plot.
+        """generate meta-data file with umap coord for plot.
         """
         cmd = (
             f"Rscript {ROOT_PATH}/atac/gen_plot_data.R "
-            f"--feature_matrix {self.feature_matrix} "
-            f"--fragments {self.fragments} "
-            f"--insert_size_data {self.insert_size_data} "
-            f"--binary_matrix {self.binary_matrix} "
             f"--sce_rds {self.sce_rds} "
-            f"--cell_tsne_info {self.cell_tsne_info} "
+            f"--meta_data {self.meta_data} "
         )
         subprocess.check_call(cmd, shell=True)
 
@@ -58,16 +44,8 @@ class Analysis(Step):
     def add_metrics(self):
         """plot and add metrics.
         """
-        df_insert = pd.read_csv(self.insert_size_data)
-        Insertplot = Insert_plot(df=df_insert).get_plotly_div()
-        self.add_data(Insert_plot=Insertplot)
-        
-        df_tss = pd.read_csv(self.tss_data)
-        Tssplot = Tss_plot(df=df_tss).get_plotly_div()
-        self.add_data(Tss_plot=Tssplot)
-        
-        df_cell = pd.read_csv(self.cell_qc_metrics)
-        Peakplot = Peak_plot(df=df_cell).get_plotly_div()
+        df = pd.read_csv(self.cell_qc_metrics, sep='\t')
+        Peakplot = Peak_plot(df=df).get_plotly_div()
         self.add_data(Peak_plot=Peakplot)
 
         df_peak = pd.read_csv(self.peak_res, sep='\t', header=None)
@@ -77,20 +55,16 @@ class Analysis(Step):
             value = format(int(total_peak), ','),
             help_info = 'Total number of peaks on primary contigs either detected by the pipeline or input by the user.'           
         )
-
-        self.add_metric(
-            name = 'TSS enrichment score',
-            value = round(max(df_tss.agg_tss_scores), 2),
-            help_info = 'Maximum value of the transcription-start-site (TSS) profile.The TSS profile is the summed accessibility signal (defined as number of cut sites per base) in a window of 2,000 bases around all the annotated TSSs, normalized by the minimum signal in the window.'           
-        )
         
-        df_tsne = pd.read_csv(self.cell_tsne_info)
-        tsne_cluster = Tsne_plot(df_tsne, 'cluster').get_plotly_div()
-        self.add_data(tsne_cluster=tsne_cluster)
+        df_meta = pd.read_csv(self.meta_data)
+        df_meta = df_meta.rename(columns={"Row.names": "barcode", "seurat_clusters": "cluster"})
+        df_meta = pd.merge(df_meta, df)
+        umap_cluster = Umap_plot(df_meta, 'cluster').get_plotly_div()
+        self.add_data(umap_cluster=umap_cluster)
 
-        df_tsne['log10 Fragments'] = df_tsne['total_frags'].apply(lambda x: math.log10(x))
-        tsne_fragment = Tsne_plot(df_tsne, 'log10 Fragments', discrete=False).get_plotly_div()
-        self.add_data(tsne_fragment=tsne_fragment)
+        df_meta['log10 Fragments'] = df_meta['fragments'].apply(lambda x: math.log10(x))
+        umap_fragment = Umap_plot(df_meta, 'log10 Fragments', discrete=False).get_plotly_div()
+        self.add_data(umap_fragment=umap_fragment)
 
     def run(self):
         self.gen_plot_data()
