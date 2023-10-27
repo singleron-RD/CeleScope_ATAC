@@ -103,7 +103,7 @@ class Cells(Step):
                                       header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
         self.df_peaks = pd.read_csv(f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_final_peaks.bed",
                                     header=None, sep='\t', names=["chr", "start", "end"])
-        self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.csv"
+        self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.tsv"
     
     @utils.add_log
     def count_overlap_peak(self):
@@ -125,6 +125,7 @@ class Cells(Step):
             
     def run(self):
         self.count_overlap_peak()
+        #self.df_barcode = pd.read_csv(self.df_cell_metrics, sep='\t')
         
         cell_num = len(self.cell_barcode)
         self.add_metric(
@@ -173,7 +174,7 @@ class Cells(Step):
             help_info = 'The median number of high-quality fragments per cell barcode'           
         )
         
-        self.df_barcode.sort_values(by='fragments', ascending=False, inplace=True)
+        self.df_barcode.sort_values(by='overlap_peaks', ascending=False, inplace=True)
         self.add_data(chart=get_plot_elements.plot_barcode_rank(self.df_barcode, log_uniform=False))
         
         
