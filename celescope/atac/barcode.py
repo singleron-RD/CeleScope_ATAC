@@ -93,23 +93,6 @@ class Barcode(super_barcode.Barcode):
             help_info='percent of barcode base pairs with quality scores over Q30',
         )
 
-        try:
-            UMIsQ30 = sum([self.umi_qual_Counter[k] for k in self.umi_qual_Counter if k >= self.ord2chr(
-                30)]) / float(sum(self.umi_qual_Counter.values())) * 100
-            UMIsQ30 = round(UMIsQ30, 2)
-            UMIsQ30_display = f'{UMIsQ30}%'
-
-        except ZeroDivisionError:
-            UMIsQ30 = None
-            UMIsQ30_display = "No UMI Pattern"
-
-        self.add_metric(
-            name='Q30 of UMIs',
-            value=UMIsQ30,
-            display=UMIsQ30_display,
-            help_info='percent of UMI base pairs with quality scores over Q30',
-        )
-
         self.add_metric(
             name='No PolyT Reads',
             value=self.no_polyT_num,
