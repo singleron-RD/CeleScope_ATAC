@@ -58,11 +58,12 @@ Under your working directory, write a shell script `run.sh` as
 
 ```
 multi_atac \
-        --mapfile ./20230427.mapfile \
+        --mapfile mapfile \
         --thread 8 \
         --chemistry atac \
-        --reference /SGRNJ06/randd/USER/cjj/soft/scpipe/ref/latest/hg38.fa \
-        --organism hg38 \
+        --reference /path/Refdata_scATAC_MAESTRO_GRCh38_1.1.0 \
+        --giggleannotation /path/giggle.all \
+        --species GRCh38 \
         --mod shell
 ``` 
 `--mapfile` Required.  Mapfile is a tab-delimited text file with as least three columns. Each line of mapfile represents paired-end fastq files.

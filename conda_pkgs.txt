@@ -1,2 +1,2 @@
-liulab-dfci:maestro=1.5.1
-
+liulab-dfci::maestro=1.5.1
+bioconda::chromap=0.1.2
