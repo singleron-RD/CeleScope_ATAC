@@ -11,9 +11,7 @@ def get_opts_analysis(parser, sub_program):
 
     if sub_program:
         s_common(parser)
-        parser.add_argument('--cell_qc_metrics', help='cell qc metrics file.', required=True)
-        parser.add_argument('--sce_rds', help='scPipe atac SCEobject rds file.', required=True)
-        parser.add_argument('--peak_res', help='narrowPeak file.', required=True)
+        parser.add_argument('--analysis_dir', help='analysis directory', required=True)
     return parser
 
 
@@ -23,11 +21,13 @@ class Analysis(Step):
 
     def __init__(self, args, display_title=None):
         Step.__init__(self, args, display_title=display_title)
-
-        self.cell_qc_metrics = args.cell_qc_metrics
-        self.sce_rds = args.sce_rds
-        self.peak_res = args.peak_res
+        
+        self.analysis_dir = args.analysis_dir
+        self.cell_qc_metrics = f"{self.analysis_dir}/cell_qc_metrics.tsv"
+        self.sce_rds =  f"{self.analysis_dir}/{self.sample}_scATAC_Object.rds"
+        self.peak_res =  f"{self.analysis_dir}/{self.sample}_final_peaks.bed"
         self.meta_data = f'{self.outdir}/meta.csv'
+        self.out = f"{self.outdir}/../outs"
 
     @utils.add_log
     def gen_plot_data(self):
@@ -65,10 +65,18 @@ class Analysis(Step):
         df_meta['log10 Fragments'] = df_meta['fragments'].apply(lambda x: math.log10(x))
         umap_fragment = Umap_plot(df_meta, 'log10 Fragments', discrete=False).get_plotly_div()
         self.add_data(umap_fragment=umap_fragment)
+    
+    def cp_files(self):
+        utils.check_mkdir(self.out)
+        files = [self.sce_rds, self.peak_res, self.cell_qc_metrics, f"{self.analysis_dir}/*.png", f"{self.analysis_dir}/*.h5"]
+        for file in files:
+            cmd = f"cp {file} {self.out}"
+            subprocess.check_call(cmd, shell=True) 
 
     def run(self):
         self.gen_plot_data()
         self.add_metrics()
+        self.cp_files()
 
 
 def analysis(args):
