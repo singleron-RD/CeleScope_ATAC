@@ -2,6 +2,7 @@ import subprocess
 import pandas as pd 
 import numpy as np 
 import os
+from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 from celescope.tools import get_plot_elements
@@ -15,7 +16,12 @@ def get_opts_atac(parser, sub_program):
     parser.add_argument('--reference', help='Genome reference fasta file', required=True)
     parser.add_argument('--giggleannotation', help='Path of the giggle annotation file', required=True)
     parser.add_argument('--species', choices=['GRCh38', 'GRCm38'], help='GRCh38 for human, GRCm38 for mouse', required=True)
-
+    parser.add_argument(
+        '--signature',
+        help='Cell signature file used to annotate cell types',
+        default='human.immune.CIBERSORT',
+        choices=['human.immune.CIBERSORT', 'mouse.brain.ALLEN', 'mouse.all.facs.TabulaMuris', 'mouse.all.droplet.TabulaMuris'],
+    )
     if sub_program:
         s_common(parser)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
@@ -37,6 +43,8 @@ class ATAC(Step):
         self.species = args.species
         self.reference = args.reference
         self.outdir = os.path.abspath(self.outdir)
+        self.signature = args.signature
+        self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
     
     @utils.add_log
     def run_maestro(self):
@@ -50,10 +58,10 @@ class ATAC(Step):
             f"--fasta {self.reference}/{self.species}_genome.fa "
             f"--index {self.reference}/{self.species}_chromap.index "
             f"--cores {self.thread} --directory {self.outdir} "
-            f"--annotation --method RP-based --signature human.immune.CIBERSORT "
+            f"--annotation --method RP-based --signature {self.signature} "
             f"--rpmodel Enhanced "
             f"--peak_cutoff 100 --count_cutoff 1000 --frip_cutoff 0.2 --cell_cutoff 50 "
-            f"--whitelist /SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/737K-cratac-v1_rev.txt "
+            f"--whitelist {self.whitelist} "
         )
         subprocess.check_call(cmd, shell=True)
         
