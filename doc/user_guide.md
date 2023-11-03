@@ -9,11 +9,14 @@ git clone https://github.com/singleron-RD/CeleScope_ATAC.git
 2. Create conda environment and install conda packages. 
 It is recommended to use [mamba](https://github.com/mamba-org/mamba) (which is a faster replacement for Conda):
 ```
-conda install mamba
+conda config --add channels defaults
+conda config --add channels liulab-dfci
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda install mamba -c conda-forge
 cd CeleScope_ATAC
 mamba create -n celescope_atac -y --file conda_pkgs.txt
 ```
-
 
 3. Install celescope_atac
 
@@ -64,6 +67,7 @@ multi_atac \
         --reference /path/Refdata_scATAC_MAESTRO_GRCh38_1.1.0 \
         --giggleannotation /path/giggle.all \
         --species GRCh38 \
+        --signature human.immune.CIBERSORT \
         --mod shell
 ``` 
 `--mapfile` Required.  Mapfile is a tab-delimited text file with as least three columns. Each line of mapfile represents paired-end fastq files.
@@ -89,9 +93,13 @@ $ls fastq_dir2
 fastq_prefix2_1.fq.gz	fastq_prefix2_2.fq.gz	fastq_prefix2_3.fq.gz
 ```
 
-`--refernece` Required. The path of the genome reference directory after downloading from ucsc.
+`--refernece` Required. The path of the genome reference directory.
 
-`--organism` Required. hg38 or mm10.
+`--species` Required. GRCh38 or GRCm38.
+
+`--giggleannotation` Required. Path of the giggle annotation file required for regulator identification.
+
+`--signature` Required. Path of Cell signature file used to annotate cell types.
 
 `--thread` Threads to use. The recommended setting is 8, and the maximum should not exceed 20.
 
@@ -106,4 +114,4 @@ sh ./shell/{sample}.sh
 Note that the `./shell/{sample}.sh` must be run under the working directory(You shouldn't run them under the `shell` directory)
 
 ## Main output
-- `{sample}/02.atac/{sample}_clonetypes.csv` The output directory.
+- `{sample}/outs/` The output directory includes MACS2 peak calling result, peak count table and gene score table, as well as clustering result, cell type annotation result.
