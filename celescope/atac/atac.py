@@ -108,7 +108,7 @@ class Cells(Step):
                                       header=None, sep='\t', names=["barcode", "fragments", "fragments_overlapping_promoter"])
         self.df_cell_barcode = self.df_barcode[self.df_barcode["barcode"].isin(self.cell_barcode)]
         self.df_fragments = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
-                                      header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
+                                      header=None, sep='\t', names=["chr", "start", "end", "barcode", "count"])
         self.df_peaks = pd.read_csv(f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_final_peaks.bed",
                                     header=None, sep='\t', names=["chr", "start", "end"])
         self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.tsv"
@@ -117,19 +117,22 @@ class Cells(Step):
     def count_overlap_peak(self):
         """count fragments overlapping peaks
         """
+        self.df_fragments.sort_values(['chr','start','end'], inplace=True)
+        self.df_peaks.sort_values(['chr','start','end'], inplace=True)
         final_df = pd.DataFrame()
+        
         for _, data_peak in self.df_peaks.iterrows():
             peak_info = dict(data_peak)
             frag_chr = self.df_fragments[self.df_fragments["chr"] == peak_info["chr"]]
             frag_overlap_peak = frag_chr[ (frag_chr["start"] >= peak_info["start"]) & (frag_chr["end"] <= peak_info["end"])] 
             final_df = pd.concat([final_df, frag_overlap_peak])
-            final_df_count = final_df.groupby('barcode', as_index=False).agg({'count': 'sum'})
-            
-            self.df_barcode = pd.merge(self.df_barcode, final_df_count, on='barcode', how='outer').fillna(0)
-            self.df_barcode = self.df_barcode.rename(columns={'count': 'overlap_peaks'})
-            self.df_barcode['frac_peak'] = round(self.df_barcode['overlap_peaks'] / self.df_barcode['fragments'], 4)
-            self.df_barcode['cell_called'] = self.df_barcode['barcode'].apply(lambda x: True if x in self.cell_barcode else False)
-            self.df_barcode.to_csv(self.df_cell_metrics, sep='\t', index=False)
+        
+        final_df_count = final_df.groupby('barcode', as_index=False).agg({'count': 'sum'})
+        self.df_barcode = pd.merge(self.df_barcode, final_df_count, on='barcode', how='outer').fillna(0)
+        self.df_barcode = self.df_barcode.rename(columns={'count': 'overlap_peaks'})
+        self.df_barcode['frac_peak'] = round(self.df_barcode['overlap_peaks'] / self.df_barcode['fragments'], 4)
+        self.df_barcode['cell_called'] = self.df_barcode['barcode'].apply(lambda x: True if x in self.cell_barcode else False)
+        self.df_barcode.to_csv(self.df_cell_metrics, sep='\t', index=False)
             
     def run(self):
         self.count_overlap_peak()
