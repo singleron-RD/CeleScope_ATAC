@@ -2,6 +2,7 @@ import subprocess
 import pandas as pd 
 import numpy as np 
 import os
+from multiprocessing import Pool
 from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
@@ -97,8 +98,8 @@ def atac(args):
         
     with Cells(args) as runner:
         runner.run()
-        
-        
+
+
 class Cells(Step):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
@@ -113,19 +114,34 @@ class Cells(Step):
                                     header=None, sep='\t', names=["chr", "start", "end"])
         self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.tsv"
     
+    @staticmethod
+    @utils.add_log
+    def get_chunk_df(df_peak, df_fragments):
+        final_df = pd.DataFrame()
+        for _, data_peak in df_peak.iterrows():
+            peak_info = dict(data_peak)
+            frag_chr = df_fragments[df_fragments["chr"] == peak_info["chr"]]
+            frag_overlap_peak = frag_chr[ (frag_chr["start"] >= peak_info["start"]) & (frag_chr["end"] <= peak_info["end"])]
+            final_df = pd.concat([final_df, frag_overlap_peak])
+        return final_df
+    
     @utils.add_log
     def count_overlap_peak(self):
         """count fragments overlapping peaks
         """
         self.df_fragments.sort_values(['chr','start','end'], inplace=True)
         self.df_peaks.sort_values(['chr','start','end'], inplace=True)
-        final_df = pd.DataFrame()
         
-        for _, data_peak in self.df_peaks.iterrows():
-            peak_info = dict(data_peak)
-            frag_chr = self.df_fragments[self.df_fragments["chr"] == peak_info["chr"]]
-            frag_overlap_peak = frag_chr[ (frag_chr["start"] >= peak_info["start"]) & (frag_chr["end"] <= peak_info["end"])] 
-            final_df = pd.concat([final_df, frag_overlap_peak])
+        peaks_count = self.df_peaks.shape[0]
+        chunk_size = peaks_count // self.thread + 1
+        df_peak_list = [self.df_peaks.iloc[ chunk_size*i: chunk_size*(i+1), :] for i in range(self.thread)]
+        
+        with Pool(self.thread) as p:
+            results = p.starmap(Cells.get_chunk_df, zip(df_peak_list, [self.df_fragments]*self.thread))
+        
+        final_df = pd.DataFrame()
+        for result in results:
+            final_df = pd.concat([final_df, result], ignore_index=True)
         
         final_df_count = final_df.groupby('barcode', as_index=False).agg({'count': 'sum'})
         self.df_barcode = pd.merge(self.df_barcode, final_df_count, on='barcode', how='outer').fillna(0)
