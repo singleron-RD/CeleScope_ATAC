@@ -23,6 +23,10 @@ def get_opts_atac(parser, sub_program):
         default='human.immune.CIBERSORT',
         choices=['human.immune.CIBERSORT', 'mouse.brain.ALLEN', 'mouse.all.facs.TabulaMuris', 'mouse.all.droplet.TabulaMuris'],
     )
+    parser.add_argument('--peak_cutoff', type=int, help='Minimum number of peaks included in each cell', default=100)
+    parser.add_argument('--count_cutoff', type=int, help='Cutoff for the number of count in each cell', default=1000)
+    parser.add_argument('--frip_cutoff', type=float, help='Cutoff for fraction of reads in promoter in each cell', default=0.2)
+    parser.add_argument('--cell_cutoff', type=int,  help='Minimum number of cells covered by each peak', default=10)
     if sub_program:
         s_common(parser)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
@@ -46,6 +50,12 @@ class ATAC(Step):
         self.outdir = os.path.abspath(self.outdir)
         self.signature = args.signature
         self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
+        
+        # cut-off
+        self.peak_cutoff = args.peak_cutoff
+        self.count_cutoff = args.count_cutoff
+        self.frip_cutoff = args.frip_cutoff
+        self.cell_cutoff = args.cell_cutoff
     
     @utils.add_log
     def run_maestro(self):
@@ -61,7 +71,7 @@ class ATAC(Step):
             f"--cores {self.thread} --directory {self.outdir} "
             f"--annotation --method RP-based --signature {self.signature} "
             f"--rpmodel Enhanced "
-            f"--peak_cutoff 100 --count_cutoff 1000 --frip_cutoff 0.2 --cell_cutoff 50 "
+            f"--peak_cutoff {self.peak_cutoff} --count_cutoff {self.count_cutoff} --frip_cutoff {self.frip_cutoff} --cell_cutoff {self.cell_cutoff} "
             f"--whitelist {self.whitelist} "
         )
         subprocess.check_call(cmd, shell=True)
