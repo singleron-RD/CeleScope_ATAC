@@ -100,8 +100,8 @@ class ATAC(Step):
 
 
 def atac(args):
-    with ATAC(args) as runner:
-        runner.run()
+    # with ATAC(args) as runner:
+    #     runner.run()
     
     with Mapping(args) as runner:
         runner.run()
@@ -110,20 +110,75 @@ def atac(args):
         runner.run()
 
 
+class Mapping(Step):
+    def __init__(self, args, display_title=None):
+        super().__init__(args, display_title=display_title)
+
+        self.df_mapping = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
+                                      header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
+    
+    def run(self):
+
+        valid_reads = self.get_slot_key(
+            slot='metrics',
+            step_name='barcode',
+            key='Valid Reads',
+        )
+        
+        self.df_mapping["size"] = self.df_mapping["chromEnd"] - self.df_mapping["chromStart"]
+        
+        self.add_metric(
+            name = 'Confidently Unique mapped read pairs',
+            value = sum(self.df_mapping['count']),
+            total = valid_reads,
+            help_info = 'Fraction of Unique mapped read pairs'
+        )
+
+        self.add_metric(
+            name = 'Fragments in nucleosome-free regions',
+            value = sum(self.df_mapping[self.df_mapping['size']<=124]['count']),
+            total = sum(self.df_mapping['count']),
+            help_info = 'Fraction of high-quality fragments smaller than 124 basepairs.'
+        )
+
+        self.add_metric(
+            name = 'Fragments flanking a single nucleosome',
+            value = sum(self.df_mapping[ (self.df_mapping['size']>124) & (self.df_mapping['size']<=296)]['count']),
+            total = sum(self.df_mapping['count']),
+            help_info = 'Fraction of high-quality fragments between 124 and 296 basepairs.'
+        )
+        self.df_mapping = self.df_mapping[self.df_mapping['size'] < 800]
+        Insertplot = Insert_plot(df=self.df_mapping).get_plotly_div()
+        self.add_data(Insert_plot=Insertplot)
+
+
 class Cells(Step):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
         
-        self.cell_barcode = utils.read_one_col(f"{self.outdir}/Result/QC/{self.sample}/{self.sample}_scATAC_validcells.txt")[0]
         self.df_barcode = pd.read_csv(f"{self.outdir}/Result/QC/{self.sample}/singlecell.txt",
                                       header=None, sep='\t', names=["barcode", "fragments", "fragments_overlapping_promoter"])
-        self.df_cell_barcode = self.df_barcode[self.df_barcode["barcode"].isin(self.cell_barcode)]
         self.df_fragments = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
                                       header=None, sep='\t', names=["chr", "start", "end", "barcode", "count"])
         self.df_peaks = pd.read_csv(f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_final_peaks.bed",
                                     header=None, sep='\t', names=["chr", "start", "end"])
+        
+        # out
+        self.sce_rds = f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_scATAC_Object.rds"
         self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.tsv"
+        self.meta_data = f"{self.outdir}/Result/Analysis/{self.sample}/meta.csv"
     
+    @utils.add_log
+    def gen_plot_data(self):
+        """generate meta-data file with umap coord for plot.
+        """
+        cmd = (
+            f"Rscript {ROOT_PATH}/atac/gen_plot_data.R "
+            f"--sce_rds {self.sce_rds} "
+            f"--meta_data {self.meta_data} "
+        )
+        subprocess.check_call(cmd, shell=True)    
+
     @staticmethod
     @utils.add_log
     def get_chunk_df(df_peak, df_fragments):
@@ -139,6 +194,9 @@ class Cells(Step):
     def count_overlap_peak(self):
         """count fragments overlapping peaks
         """
+        self.cell_barcode = utils.read_one_col(self.meta_data)[0]
+        del self.cell_barcode[0]
+        
         self.df_fragments.sort_values(['chr','start','end'], inplace=True)
         self.df_peaks.sort_values(['chr','start','end'], inplace=True)
         
@@ -161,9 +219,10 @@ class Cells(Step):
         self.df_barcode.to_csv(self.df_cell_metrics, sep='\t', index=False)
             
     def run(self):
+        self.gen_plot_data()
         self.count_overlap_peak()
-        #self.df_barcode = pd.read_csv(self.df_cell_metrics, sep='\t')
         
+        self.df_cell_barcode = self.df_barcode[self.df_barcode["barcode"].isin(self.cell_barcode)]
         cell_num = len(self.cell_barcode)
         self.add_metric(
             name = 'Estimated Number of Cells',
@@ -213,47 +272,5 @@ class Cells(Step):
         
         self.df_barcode.sort_values(by='overlap_peaks', ascending=False, inplace=True)
         self.add_data(chart=get_plot_elements.plot_barcode_rank(self.df_barcode, log_uniform=False))
-        
-        
-class Mapping(Step):
-    def __init__(self, args, display_title=None):
-        super().__init__(args, display_title=display_title)
-
-        self.df_mapping = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
-                                      header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
-    
-    def run(self):
-
-        valid_reads = self.get_slot_key(
-            slot='metrics',
-            step_name='barcode',
-            key='Valid Reads',
-        )
-        
-        self.df_mapping["size"] = self.df_mapping["chromEnd"] - self.df_mapping["chromStart"]
-        
-        self.add_metric(
-            name = 'Confidently Unique mapped read pairs',
-            value = sum(self.df_mapping['count']),
-            total = valid_reads,
-            help_info = 'Fraction of Unique mapped read pairs'
-        )
-
-        self.add_metric(
-            name = 'Fragments in nucleosome-free regions',
-            value = sum(self.df_mapping[self.df_mapping['size']<=124]['count']),
-            total = sum(self.df_mapping['count']),
-            help_info = 'Fraction of high-quality fragments smaller than 124 basepairs.'
-        )
-
-        self.add_metric(
-            name = 'Fragments flanking a single nucleosome',
-            value = sum(self.df_mapping[ (self.df_mapping['size']>124) & (self.df_mapping['size']<=296)]['count']),
-            total = sum(self.df_mapping['count']),
-            help_info = 'Fraction of high-quality fragments between 124 and 296 basepairs.'
-        )
-        self.df_mapping = self.df_mapping[self.df_mapping['size'] < 800]
-        Insertplot = Insert_plot(df=self.df_mapping).get_plotly_div()
-        self.add_data(Insert_plot=Insertplot)
          
         
