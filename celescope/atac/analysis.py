@@ -4,7 +4,6 @@ import math
 from celescope.tools.plotly_plot import Peak_plot, Umap_plot
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
-from celescope.__init__ import ROOT_PATH
 
 
 def get_opts_analysis(parser, sub_program):
@@ -26,19 +25,8 @@ class Analysis(Step):
         self.cell_qc_metrics = f"{self.analysis_dir}/cell_qc_metrics.tsv"
         self.sce_rds =  f"{self.analysis_dir}/{self.sample}_scATAC_Object.rds"
         self.peak_res =  f"{self.analysis_dir}/{self.sample}_final_peaks.bed"
-        self.meta_data = f'{self.outdir}/meta.csv'
+        self.meta_data = f'{self.analysis_dir}/meta.csv'
         self.out = f"{self.outdir}/../outs"
-
-    @utils.add_log
-    def gen_plot_data(self):
-        """generate meta-data file with umap coord for plot.
-        """
-        cmd = (
-            f"Rscript {ROOT_PATH}/atac/gen_plot_data.R "
-            f"--sce_rds {self.sce_rds} "
-            f"--meta_data {self.meta_data} "
-        )
-        subprocess.check_call(cmd, shell=True)
 
     @utils.add_log
     def add_metrics(self):
@@ -74,7 +62,6 @@ class Analysis(Step):
             subprocess.check_call(cmd, shell=True) 
 
     def run(self):
-        self.gen_plot_data()
         self.add_metrics()
         self.cp_files()
 
