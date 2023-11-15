@@ -2,6 +2,7 @@ import subprocess
 import pandas as pd 
 import numpy as np 
 import os
+import itertools
 from multiprocessing import Pool
 from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
@@ -100,8 +101,8 @@ class ATAC(Step):
 
 
 def atac(args):
-    # with ATAC(args) as runner:
-    #     runner.run()
+    with ATAC(args) as runner:
+        runner.run()
     
     with Mapping(args) as runner:
         runner.run()
@@ -182,13 +183,13 @@ class Cells(Step):
     @staticmethod
     @utils.add_log
     def get_chunk_df(df_peak, df_fragments):
-        final_df = pd.DataFrame()
+        index_res = set()
         for _, data_peak in df_peak.iterrows():
             peak_info = dict(data_peak)
             frag_chr = df_fragments[df_fragments["chr"] == peak_info["chr"]]
             frag_overlap_peak = frag_chr[ (frag_chr["start"] >= peak_info["start"]) & (frag_chr["end"] <= peak_info["end"])]
-            final_df = pd.concat([final_df, frag_overlap_peak])
-        return final_df
+            index_res.update(set(frag_overlap_peak.index))
+        return index_res
     
     @utils.add_log
     def count_overlap_peak(self):
@@ -207,9 +208,8 @@ class Cells(Step):
         with Pool(self.thread) as p:
             results = p.starmap(Cells.get_chunk_df, zip(df_peak_list, [self.df_fragments]*self.thread))
         
-        final_df = pd.DataFrame()
-        for result in results:
-            final_df = pd.concat([final_df, result], ignore_index=True)
+        final_index = set(itertools.chain.from_iterable(results))
+        final_df = self.df_fragments[self.df_fragments.index.isin(final_index)]
         
         final_df_count = final_df.groupby('barcode', as_index=False).agg({'count': 'sum'})
         self.df_barcode = pd.merge(self.df_barcode, final_df_count, on='barcode', how='outer').fillna(0)
@@ -266,7 +266,7 @@ class Cells(Step):
 
         self.add_metric(
             name = 'Median high-quality fragments per cell',
-            value = np.median(self.df_cell_barcode.fragments),
+            value = int(np.median(self.df_cell_barcode.fragments)),
             help_info = 'The median number of high-quality fragments per cell barcode'           
         )
         
