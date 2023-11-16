@@ -11,6 +11,7 @@ def get_opts_analysis(parser, sub_program):
     if sub_program:
         s_common(parser)
         parser.add_argument('--analysis_dir', help='analysis directory', required=True)
+        parser.add_argument('--filtered_peak_count', help='filtered peak count h5 file', required=True)
     return parser
 
 
@@ -21,6 +22,7 @@ class Analysis(Step):
     def __init__(self, args, display_title=None):
         Step.__init__(self, args, display_title=display_title)
         
+        self.filtered_peak_count = args.filtered_peak_count
         self.analysis_dir = args.analysis_dir
         self.cell_qc_metrics = f"{self.analysis_dir}/cell_qc_metrics.tsv"
         self.sce_rds =  f"{self.analysis_dir}/{self.sample}_scATAC_Object.rds"
@@ -56,7 +58,7 @@ class Analysis(Step):
     
     def cp_files(self):
         utils.check_mkdir(self.out)
-        files = [self.sce_rds, self.peak_res, self.cell_qc_metrics, f"{self.analysis_dir}/*.png", f"{self.analysis_dir}/*.h5"]
+        files = [self.sce_rds, self.peak_res, self.cell_qc_metrics, f"{self.analysis_dir}/*.png", f"{self.analysis_dir}/*.h5", self.filtered_peak_count]
         for file in files:
             cmd = f"cp {file} {self.out}"
             subprocess.check_call(cmd, shell=True) 

@@ -29,11 +29,13 @@ class Multi_atac(Multi):
     def analysis(self, sample):
         step = 'analysis'
         analysis_dir = f'{self.outdir_dic[sample]["atac"]}/Result/Analysis/{sample}'
+        filtered_peak_count = f'{self.outdir_dic[sample]["atac"]}/Result/QC/{sample}/{sample}_filtered_peak_count.h5'
         
         cmd_line = self.get_cmd_line(step, sample)
         cmd = (
             f'{cmd_line} '
             f'--analysis_dir {analysis_dir} '
+            f'--filtered_peak_count {filtered_peak_count} '
         )
         self.process_cmd(cmd, step, sample, m=10, x=1)
 
