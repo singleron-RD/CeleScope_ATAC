@@ -74,6 +74,7 @@ class ATAC(Step):
             f"--rpmodel Enhanced "
             f"--peak_cutoff {self.peak_cutoff} --count_cutoff {self.count_cutoff} --frip_cutoff {self.frip_cutoff} --cell_cutoff {self.cell_cutoff} "
             f"--whitelist {self.whitelist} "
+            f"--shortpeak "
         )
         subprocess.check_call(cmd, shell=True)
         
