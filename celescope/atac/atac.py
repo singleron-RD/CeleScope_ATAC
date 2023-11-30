@@ -186,9 +186,8 @@ class Cells(Step):
     def get_chunk_df(df_peak, df_fragments):
         index_res = set()
         for _, data_peak in df_peak.iterrows():
-            peak_info = dict(data_peak)
-            frag_chr = df_fragments[df_fragments["chr"] == peak_info["chr"]]
-            frag_overlap_peak = frag_chr[ (frag_chr["start"] >= peak_info["start"]) & (frag_chr["end"] <= peak_info["end"])]
+            frag_chr = df_fragments[df_fragments["chr"] == data_peak["chr"]]
+            frag_overlap_peak = frag_chr[ (frag_chr["start"] >= data_peak["start"]) & (frag_chr["end"] <= data_peak["end"])]
             index_res.update(set(frag_overlap_peak.index))
         return index_res
     
@@ -205,9 +204,10 @@ class Cells(Step):
         peaks_count = self.df_peaks.shape[0]
         chunk_size = peaks_count // self.thread + 1
         df_peak_list = [self.df_peaks.iloc[ chunk_size*i: chunk_size*(i+1), :] for i in range(self.thread)]
+        df_fragment_list = [self.df_fragments[self.df_fragments['chr'].isin(set(df_peak.chr))] for df_peak in df_peak_list]
         
         with Pool(self.thread) as p:
-            results = p.starmap(Cells.get_chunk_df, zip(df_peak_list, [self.df_fragments]*self.thread))
+            results = p.starmap(Cells.get_chunk_df, zip(df_peak_list, df_fragment_list))
         
         final_index = set(itertools.chain.from_iterable(results))
         final_df = self.df_fragments[self.df_fragments.index.isin(final_index)]
