@@ -185,10 +185,12 @@ class Cells(Step):
     @utils.add_log
     def get_chunk_df(df_peak, df_fragments):
         index_res = set()
-        for _, data_peak in df_peak.iterrows():
-            frag_chr = df_fragments[df_fragments["chr"] == data_peak["chr"]]
-            frag_overlap_peak = frag_chr[ (frag_chr["start"] >= data_peak["start"]) & (frag_chr["end"] <= data_peak["end"])]
-            index_res.update(set(frag_overlap_peak.index))
+        for ch in set(df_peak.chr):
+            df_peak_chr = df_peak[df_peak['chr'] == ch]
+            df_fragment_chr = df_fragments[df_fragments['chr']== ch]
+            for _, data_peak in df_peak_chr.iterrows():
+                frag_overlap_peak = df_fragment_chr[ (df_fragment_chr["start"] >= data_peak["start"]) & (df_fragment_chr["end"] <= data_peak["end"])]
+                index_res.update(set(frag_overlap_peak.index))
         return index_res
     
     @utils.add_log
