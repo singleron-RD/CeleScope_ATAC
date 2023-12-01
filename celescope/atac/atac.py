@@ -104,7 +104,10 @@ class ATAC(Step):
 def atac(args):
     with ATAC(args) as runner:
         runner.run()
-    
+
+    with Maestro_metrics(args) as runner:
+        runner.run()
+        
     with Mapping(args) as runner:
         runner.run()
         
@@ -112,13 +115,46 @@ def atac(args):
         runner.run()
 
 
-class Mapping(Step):
+class Maestro_metrics(Step):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
         self.df_mapping = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
                                       header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
+        self.df_barcode = pd.read_csv(f"{self.outdir}/Result/QC/{self.sample}/singlecell.txt",
+                                      header=None, sep='\t', names=["barcode", "fragments", "fragments_overlapping_promoter"])
+        self.df_fragments = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
+                                      header=None, sep='\t', names=["chr", "start", "end", "barcode", "count"])
+        self.df_peaks = pd.read_csv(f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_final_peaks.bed",
+                                    header=None, sep='\t', names=["chr", "start", "end"])
+        self.sce_rds = f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_scATAC_Object.rds"
+        
+        self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.tsv"
+        self.meta_data = f"{self.outdir}/Result/Analysis/{self.sample}/meta.csv"
     
+    @utils.add_log
+    def gen_plot_data(self):
+        """generate meta-data file with umap coord for plot.
+        """
+        cmd = (
+            f"Rscript {ROOT_PATH}/atac/gen_plot_data.R "
+            f"--sce_rds {self.sce_rds} "
+            f"--meta_data {self.meta_data} "
+        )
+        subprocess.check_call(cmd, shell=True)
+        
+    def run(self):
+        self.gen_plot_data()
+
+
+class Mapping(Maestro_metrics):
+    def __init__(self, args, display_title=None):
+        super().__init__(args, display_title=display_title)
+        
+        self.cell_barcode = utils.read_one_col(self.meta_data)[0]
+        del self.cell_barcode[0]
+        self.df_mapping_cell = self.df_mapping[self.df_mapping["barcode"].isin(self.cell_barcode)]
+        
     def run(self):
 
         valid_reads = self.get_slot_key(
@@ -138,48 +174,36 @@ class Mapping(Step):
 
         self.add_metric(
             name = 'Fragments in nucleosome-free regions',
-            value = sum(self.df_mapping[self.df_mapping['size']<=124]['count']),
-            total = sum(self.df_mapping['count']),
+            value = self.df_mapping[self.df_mapping['size']<=124].shape[0],
+            total = self.df_mapping.shape[0],
             help_info = 'Fraction of high-quality fragments smaller than 124 basepairs.'
         )
 
         self.add_metric(
             name = 'Fragments flanking a single nucleosome',
-            value = sum(self.df_mapping[ (self.df_mapping['size']>124) & (self.df_mapping['size']<=296)]['count']),
-            total = sum(self.df_mapping['count']),
+            value = self.df_mapping[ (self.df_mapping['size']>124) & (self.df_mapping['size']<=296)].shape[0],
+            total = self.df_mapping.shape[0],
             help_info = 'Fraction of high-quality fragments between 124 and 296 basepairs.'
         )
+
+        self.add_metric(
+            name = 'Percent duplicates',
+            value = self.df_mapping_cell[self.df_mapping_cell['count']>1].shape[0],
+            total = self.df_mapping_cell.shape[0],
+            help_info = 'Fraction of high-quality read pairs that are deemed to be PCR duplicates. A high-quality read-pair is one with mapping quality > 30, that is not chimeric and maps to nuclear contigs. This metric is a measure of sequencing saturation and is a function of library complexity and sequencing depth. More specifically, this is the fraction of high-quality fragments with a valid barcode that align to the same genomic position as another read pair in the library.'
+        )
+        
         self.df_mapping = self.df_mapping[self.df_mapping['size'] < 800]
         Insertplot = Insert_plot(df=self.df_mapping).get_plotly_div()
         self.add_data(Insert_plot=Insertplot)
 
 
-class Cells(Step):
+class Cells(Maestro_metrics):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
-        
-        self.df_barcode = pd.read_csv(f"{self.outdir}/Result/QC/{self.sample}/singlecell.txt",
-                                      header=None, sep='\t', names=["barcode", "fragments", "fragments_overlapping_promoter"])
-        self.df_fragments = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
-                                      header=None, sep='\t', names=["chr", "start", "end", "barcode", "count"])
-        self.df_peaks = pd.read_csv(f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_final_peaks.bed",
-                                    header=None, sep='\t', names=["chr", "start", "end"])
-        
-        # out
-        self.sce_rds = f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_scATAC_Object.rds"
-        self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.tsv"
-        self.meta_data = f"{self.outdir}/Result/Analysis/{self.sample}/meta.csv"
-    
-    @utils.add_log
-    def gen_plot_data(self):
-        """generate meta-data file with umap coord for plot.
-        """
-        cmd = (
-            f"Rscript {ROOT_PATH}/atac/gen_plot_data.R "
-            f"--sce_rds {self.sce_rds} "
-            f"--meta_data {self.meta_data} "
-        )
-        subprocess.check_call(cmd, shell=True)    
+
+        self.cell_barcode = utils.read_one_col(self.meta_data)[0]
+        del self.cell_barcode[0]
 
     @staticmethod
     @utils.add_log
@@ -197,9 +221,6 @@ class Cells(Step):
     def count_overlap_peak(self):
         """count fragments overlapping peaks
         """
-        self.cell_barcode = utils.read_one_col(self.meta_data)[0]
-        del self.cell_barcode[0]
-        
         self.df_fragments.sort_values(['chr','start','end'], inplace=True)
         self.df_peaks.sort_values(['chr','start','end'], inplace=True)
         
