@@ -27,7 +27,7 @@ def get_opts_atac(parser, sub_program):
     parser.add_argument('--peak_cutoff', type=int, help='Minimum number of peaks included in each cell', default=500)
     parser.add_argument('--count_cutoff', type=int, help='Cutoff for the number of count in each cell', default=1000)
     parser.add_argument('--frip_cutoff', type=float, help='Cutoff for fraction of reads in promoter in each cell', default=0.2)
-    parser.add_argument('--cell_cutoff', type=int,  help='Minimum number of cells covered by each peak', default=10)
+    parser.add_argument('--cell_cutoff', type=int,  help='Minimum number of cells covered by each peak', default=1)
     if sub_program:
         s_common(parser)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
