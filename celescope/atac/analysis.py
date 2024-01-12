@@ -28,7 +28,7 @@ class Analysis(Step):
         self.sce_rds =  f"{self.analysis_dir}/{self.sample}_scATAC_Object.rds"
         self.peak_res =  f"{self.analysis_dir}/{self.sample}_final_peaks.bed"
         self.meta_data = f"{self.analysis_dir}/meta.csv"
-        self.fragment = f"{self.analysis_dir}/../../Mapping/{self.sample}/fragments_corrected_dedup_count.tsv.gz"
+        self.fragment = f"{self.analysis_dir}/../../Mapping/{self.sample}/fragments_corrected_dedup_count.tsv.gz*"
         self.out = f"{self.outdir}/../outs"
 
     @utils.add_log
