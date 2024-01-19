@@ -51,6 +51,7 @@ class ATAC(Step):
         self.outdir = os.path.abspath(self.outdir)
         self.signature = args.signature
         self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
+        # self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/884K-2024.txt"
         
         # cut-off
         self.peak_cutoff = args.peak_cutoff
