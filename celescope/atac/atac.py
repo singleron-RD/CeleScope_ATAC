@@ -15,15 +15,8 @@ __SUB_STEPS__ = ['mapping', 'cells']
 
 
 def get_opts_atac(parser, sub_program):
-    parser.add_argument('--reference', help='Genome reference fasta file', required=True)
-    parser.add_argument('--giggleannotation', help='Path of the giggle annotation file', required=True)
-    parser.add_argument('--species', choices=['GRCh38', 'GRCm38'], help='GRCh38 for human, GRCm38 for mouse', required=True)
-    parser.add_argument(
-        '--signature',
-        help='Cell signature file used to annotate cell types',
-        default='human.immune.CIBERSORT',
-        choices=['human.immune.CIBERSORT', 'mouse.brain.ALLEN', 'mouse.all.facs.TabulaMuris', 'mouse.all.droplet.TabulaMuris'],
-    )
+    parser.add_argument('--reference', help='Genome reference directory includes fasta, index, promoter bed file.', required=True)
+    parser.add_argument('--genomesize', help='refer to www.genomesize.com. for example, 2.7e+9 for hs, 1.87e+9 for mm, 1.2e+8 for fruitfly', required=True)
     parser.add_argument('--peak_cutoff', type=int, help='Minimum number of peaks included in each cell', default=500)
     parser.add_argument('--count_cutoff', type=int, help='Cutoff for the number of count in each cell', default=1000)
     parser.add_argument('--frip_cutoff', type=float, help='Cutoff for fraction of reads in promoter in each cell', default=0.2)
@@ -44,12 +37,9 @@ class ATAC(Step):
     def __init__(self, args, display_title=None):
         Step.__init__(self, args, display_title=display_title)
         
-        self.giggleannotation = args.giggleannotation
-        self.input_path = os.path.abspath(args.input_path)
-        self.species = args.species
+        self.input_path = args.input_path
         self.reference = args.reference
-        self.outdir = os.path.abspath(self.outdir)
-        self.signature = args.signature
+        self.genomesize = args.genomesize
         self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
         
         # cut-off
@@ -59,46 +49,114 @@ class ATAC(Step):
         self.cell_cutoff = args.cell_cutoff
     
     @utils.add_log
-    def run_maestro(self):
-        """run maestro
-        """
-        # Step 1. Configure the MAESTRO workflow
-        cmd = (
-            f"MAESTRO scatac-init --input_path {self.input_path} "
-            f"--species {self.species} --platform 10x-genomics --format fastq --mapping chromap "
-            f"--giggleannotation {self.giggleannotation} "
-            f"--fasta {self.reference}/{self.species}_genome.fa "
-            f"--index {self.reference}/{self.species}_chromap.index "
-            f"--cores {self.thread} --directory {self.outdir} "
-            f"--annotation --method RP-based --signature {self.signature} "
-            f"--rpmodel Enhanced "
-            f"--peak_cutoff {self.peak_cutoff} --count_cutoff {self.count_cutoff} --frip_cutoff {self.frip_cutoff} --cell_cutoff {self.cell_cutoff} "
-            f"--whitelist {self.whitelist} "
-            f"--shortpeak "
+    def mapping(self):
+        """run chromap and process fragments"""
+        cmd1 = (
+            f"chromap --preset atac "
+            f"-x {self.reference}/genome.index -r {self.reference}/genome.fa "
+            f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq"
+            f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq --barcode-whitelist {self.whitelist} "
+            f"-o fragments_corrected_dedup_count.tsv -t {self.thread} "
         )
-        subprocess.check_call(cmd, shell=True)
+
+        cmd2 = (
+            "bgzip -c fragments_corrected_dedup_count.tsv > fragments_corrected_dedup_count.tsv.gz;"
+            "tabix -p bed fragments_corrected_dedup_count.tsv.gz"
+        )
+
+        for cmd in [cmd1, cmd2]:
+            subprocess.check_call(cmd, shell=True)
         
-        # Step 2. Configure samples.json file
-        cmd = (
-            f"MAESTRO samples-init --assay_type scatac --platform 10x-genomics --data_type fastq --data_dir {self.input_path}"
+    @utils.add_log
+    def qcstat(self):
+        """qc stat"""
+        # qc mapping
+        cmd1 = (
+            f"sort -k4,4 -V fragments_corrected_dedup_count.tsv > fragments_corrected_count_sortedbybarcode.tsv;"
+            f"bedtools groupby -i fragments_corrected_count_sortedbybarcode.tsv -g 4 -c 5 -o sum > singlecell_mapped.txt"
         )
         
-        cwd = os.getcwd()
-        os.chdir(self.outdir)
-        subprocess.check_call(cmd, shell=True)
-        
-        # Step 3. Run snakemake pipeline
-        cmd = (
-            f"snakemake -j {self.thread}"
+        # qc promoter
+        cmd2 = (
+            f"bedtools intersect -wa -a fragments_corrected_dedup_count.tsv -b {self.reference}/promoter.bed > fragments_promoter.tsv;"
+            "sort -k4,4 -V fragments_promoter.tsv > fragments_promoter_sortbybarcode.tsv;"
+            "bedtools groupby -i  fragments_promoter_sortbybarcode.tsv -g 4 -c 5 -o sum > singlecell_promoter.txt"
         )
-        subprocess.check_call(cmd, shell=True)
         
-        # change dir back 
-        os.chdir(cwd)
+        # qc singlecell
+        cmd3 = (
+            "sort -k1,1 singlecell_mapped.txt > singlecell_mapped_sortbybarcode.txt;"
+            "sort -k1,1 singlecell_promoter.txt > singlecell_promoter_sortbybarcode.txt;"
+            "join --nocheck-order -t $'\t' -a1 -e'0' -o'1.1 1.2 2.2' -1 1 -2 1 \
+                singlecell_mapped_sortbybarcode.txt singlecell_promoter_sortbybarcode.txt > singlecell.txt"
+        )
+        
+        for cmd in [cmd1, cmd2, cmd3]:
+            subprocess.check_call(cmd, shell=True)
     
+    @utils.add_log
+    def call_peak(self):
+        """peak calling"""
+        cmd1 = (
+            f"macs2 callpeak -f BEDPE -g {self.genomesize} --outdir peak -n {self.sample} "
+            "-B -q 0.05 --nomodel --extsize=50 --SPMR --keep-dup all -t fragments_corrected_dedup_count.tsv"
+        )
+        
+        # used to call shortpeak
+        cmd2 = (
+            "awk -F'\\t' 'function abs(x){{return ((x < 0.0) ? -x : x)}} {{if (abs($3-$2)<=150) print}}' \
+                fragments_corrected_dedup_count.tsv > fragments_corrected_150bp.tsv"
+        )
+        
+        # call shortpeak
+        cmd3 = (
+            f"macs2 callpeak -f BEDPE -g 4.97e+9 --outdir peak -n {self.sample}_150bp "
+            "-B -q 0.05 --nomodel --extsize=50 --SPMR --keep-dup all -t fragments_corrected_150bp.tsv"
+        )
+        
+        # merge peak
+        cmd4 = (
+            f"cat peak/{self.sample}_peaks.narrowPeak peak/{self.sample}_150bp_peaks.narrowPeak \
+                | sort -k1,1 -k2,2n | cut -f 1-4 > tmp_peaks.bed;"
+            f"mergeBed -i tmp_peaks.bed > peak/{self.sample}_final_peaks.bed;"
+            "rm tmp_peaks.bed"
+        )
+        
+        for cmd in [cmd1, cmd2, cmd3, cmd4]:
+            subprocess.check_call(cmd)
+            
+    @utils.add_log
+    def get_valid_cells(self):
+        """filter by count-cutoff and frip-cutfoff"""
+        df = pd.read_csv("singlecell.txt", header=None, sep='\t', names=["barcode", "fragments", "fragments_overlapping_promoter"])
+        df = df[df["fragments"] >= self.count_cutoff]
+        df["fraction_in_promoter"] = df["fragments_overlapping_promoter"] / df["fragments"]
+        df = df[df["fraction_in_promoter"] >= self.frip_cutoff]
+        df["barcode"].to_csv("validcells.txt", header=None, index=None)
+    
+    @utils.add_log
+    def peak_count(self):
+        """generate peak count matrix h5 and filtered h5 file"""
+        cmd1 = (
+            f"MAESTRO scatac-peakcount --peak peak/{self.sample}_final_peaks.bed --fragment fragments_corrected_dedup_count.tsv "
+            f"--barcode validcells.txt --cores {self.thread} --directory peak --outprefix {self.sample}"
+        )
+        
+        # filter
+        cmd2 = (
+            f"MAESTRO scatac-qc --format h5 --peakcount test_peak_count.h5 "
+            f"--peak-cutoff {self.peak_cutoff} --cell-cutoff {self.cell_cutoff} --directory peak --outprefix {self.sample}"
+        )
+        
+        for cmd in [cmd1, cmd2]:
+            subprocess.check_call(cmd, shell=True)
     
     def run(self):
-        self.run_maestro()
+        cwd = os.getcwd()
+        os.chdir(self.outdir)
+
+        
+        os.chdir(cwd)
 
 
 def atac(args):
