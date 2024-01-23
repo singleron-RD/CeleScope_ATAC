@@ -154,8 +154,11 @@ class ATAC(Step):
     def run(self):
         cwd = os.getcwd()
         os.chdir(self.outdir)
-
-        
+        self.mapping()
+        self.qcstat()
+        self.call_peak()
+        self.get_valid_cells()
+        self.peak_count()
         os.chdir(cwd)
 
 
@@ -177,18 +180,19 @@ class Maestro_metrics(Step):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.df_mapping = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
+        self.filtered_peak_count = f"{self.outdir}/peak/{self.sample}_filtered_peak_count.h5"
+        self.df_mapping = pd.read_csv(f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv",
                                       header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
-        self.df_barcode = pd.read_csv(f"{self.outdir}/Result/QC/{self.sample}/singlecell.txt",
+        self.df_barcode = pd.read_csv(f"{self.outdir}/singlecell.txt",
                                       header=None, sep='\t', names=["barcode", "fragments", "fragments_overlapping_promoter"])
-        self.df_fragments = pd.read_csv(f"{self.outdir}/Result/Mapping/{self.sample}/fragments_corrected_count_sortedbybarcode.tsv",
+        self.df_fragments = pd.read_csv(f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv",
                                       header=None, sep='\t', names=["chr", "start", "end", "barcode", "count"])
-        self.df_peaks = pd.read_csv(f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_final_peaks.bed",
+        self.df_peaks = pd.read_csv(f"{self.outdir}/peak/{self.sample}_final_peaks.bed",
                                     header=None, sep='\t', names=["chr", "start", "end"])
-        self.sce_rds = f"{self.outdir}/Result/Analysis/{self.sample}/{self.sample}_scATAC_Object.rds"
         
-        self.df_cell_metrics = f"{self.outdir}/Result/Analysis/{self.sample}/cell_qc_metrics.tsv"
-        self.meta_data = f"{self.outdir}/Result/Analysis/{self.sample}/meta.csv"
+        self.rds = f"{self.outdir}/{self.sample}.rds"
+        self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
+        self.meta_data = f"{self.outdir}/meta.csv"
     
     @utils.add_log
     def gen_plot_data(self):
@@ -196,8 +200,12 @@ class Maestro_metrics(Step):
         """
         cmd = (
             f"Rscript {ROOT_PATH}/atac/gen_plot_data.R "
-            f"--sce_rds {self.sce_rds} "
+            f"--filtered_peak_count {self.filtered_peak_count} "
+            f"--rds {self.rds} "
             f"--meta_data {self.meta_data} "
+            f"--sample {self.sample} "
+            f"--outdir {self.outdir}"
+            
         )
         subprocess.check_call(cmd, shell=True)
         

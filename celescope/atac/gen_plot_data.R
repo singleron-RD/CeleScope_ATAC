@@ -1,17 +1,33 @@
-library(data.table)
-library(dplyr)
-library(SummarizedExperiment)
-library(argparse)
+library(MAESTRO)
 library(Seurat)
 
 parser <- ArgumentParser()
-parser$add_argument("--sce_rds",help="scPipe atac SCEobject rds file", required=TRUE)
-parser$add_argument("--meta_data", help='meta-data file.', required=TRUE)
+parser$add_argument("--filtered_peak_count", help="filter peak count", required=TRUE)
+parser$add_argument("--rds", help="rds file", required=TRUE)
+parser$add_argument("--meta_data", help="meta data file", required=TRUE)
+parser$add_argument("--outdir", help="output directory", required=TRUE)
+parser$add_argument("--sample", help="sample name", required=TRUE)
 args <- parser$parse_args()
 
-sce_rds <- args$sce_rds
+filtered_peak_count <- args$filtered_peak_count
+rds <- args$rds
 meta_data <- args$meta_data
+outdir <- args$outdir
+sample <- args$sample
 
-rds = readRDS(sce_rds)
+filtered_peak_count = Read10X_h5(filtered_peak_count)
+rds.res <- ATACRunSeurat(inputMat = rds,
+                                 project = sample,
+                                 min.c = 0,
+                                 min.p = 0,
+                                 method = "LSI",
+                                 dims.use = 1:30,
+                                 cluster.res = 0.6,
+                                 only.pos = TRUE,
+                                 peaks.cutoff = 0,
+                                 peaks.pct = 0,
+                                 peaks.logfc = 0,
+                                 outdir = outdir)
+saveRDS(rds.res, rds)
 df = merge(rds$ATAC@reductions$umap@cell.embeddings, rds$ATAC@meta.data, by = "row.names")
 write.csv(df, meta_data, quote=FALSE, row.names=FALSE)
