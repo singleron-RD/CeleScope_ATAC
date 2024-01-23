@@ -29,30 +29,13 @@ pip install celescope_atac
 ## Usage
 1. Make a atac reference
 
-### Homo sapiens
+### Customized reference
 
 ```
-mkdir -p /genome/scATAC
-cd /genome/scATAC
-wget http://cistrome.org/~galib/MAESTRO/references/scATAC/Refdata_scATAC_MAESTRO_GRCh38_1.1.0.tar.gz
-tar -xvzf Refdata_scATAC_MAESTRO_GRCh38_1.1.0.tar.gz
-wget http://cistrome.org/~galib/MAESTRO/references/giggle.all.tar.gz
-tar -xvzf giggle.all.tar.gz
-cd Refdata_scATAC_MAESTRO_GRCh38_1.1.0
-chromap -i -r GRCh38_genome.fa -o GRCh38_chromap.index
-```
-
-### Mus musculus
-
-```
-mkdir -p /genome/scATAC
-cd /genome/scATAC
-wget http://cistrome.org/~galib/MAESTRO/references/scATAC/Refdata_scATAC_MAESTRO_GRCm38_1.1.0.tar.gz
-tar -xvzf Refdata_scATAC_MAESTRO_GRCm38_1.1.0.tar.gz
-wget http://cistrome.org/~galib/MAESTRO/references/giggle.all.tar.gz
-tar -xvzf giggle.all.tar.gz
-cd Refdata_scATAC_MAESTRO_GRCm38_1.1.0
-chromap -i -r GRCm38_genome.fa -o GRCm38_chromap.index
+download genome.fasta and gene.gtf files.
+chromap -i -r genome.fa -o genome.index
+gtfToGenePred -genePredExt -geneNameAsName2 gene.gtf gene.tmp
+awk '{if($4>=2000) print $2"\t"$4-2000"\t"$4+2000"\t"$1"\t"$12"\t"$3}' gene.tmp >  promoter.bed
 ```
 
 2. Generate scripts for each sample
@@ -64,10 +47,8 @@ multi_atac \
         --mapfile mapfile \
         --thread 8 \
         --chemistry atac \
-        --reference /path/Refdata_scATAC_MAESTRO_GRCh38_1.1.0 \
-        --giggleannotation /path/giggle.all \
-        --species GRCh38 \
-        --signature human.immune.CIBERSORT \
+        --reference ref_path \
+        --genomesize "2.7e+9"
         --mod shell
 ``` 
 `--mapfile` Required.  Mapfile is a tab-delimited text file with as least three columns. Each line of mapfile represents paired-end fastq files.
@@ -93,13 +74,9 @@ $ls fastq_dir2
 fastq_prefix2_1.fq.gz	fastq_prefix2_2.fq.gz	fastq_prefix2_3.fq.gz
 ```
 
-`--refernece` Required. The path of the genome reference directory.
+`--refernece` Required. The path of the genome reference directory that includes fasta, index, promoter bed file.
 
-`--species` Required. GRCh38 or GRCm38.
-
-`--giggleannotation` Required. Path of the giggle annotation file required for regulator identification.
-
-`--signature` Required. Path of Cell signature file used to annotate cell types.
+`--genomesize` Required. genome size. Refer to www.genomesize.com.
 
 `--thread` Threads to use. The recommended setting is 8, and the maximum should not exceed 20.
 
