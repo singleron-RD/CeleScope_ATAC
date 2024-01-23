@@ -25,10 +25,10 @@ class Analysis(Step):
         self.filtered_peak_count = args.filtered_peak_count
         self.analysis_dir = args.analysis_dir
         self.cell_qc_metrics = f"{self.analysis_dir}/cell_qc_metrics.tsv"
-        self.sce_rds =  f"{self.analysis_dir}/{self.sample}_scATAC_Object.rds"
-        self.peak_res =  f"{self.analysis_dir}/{self.sample}_final_peaks.bed"
+        self.sce_rds =  f"{self.analysis_dir}/{self.sample}.rds"
+        self.peak_res =  f"{self.analysis_dir}/peak/{self.sample}_final_peaks.bed"
         self.meta_data = f"{self.analysis_dir}/meta.csv"
-        self.fragment = f"{self.analysis_dir}/../../Mapping/{self.sample}/fragments_corrected_dedup_count.tsv.gz*"
+        self.fragment = f"{self.analysis_dir}/fragments_corrected_dedup_count.tsv.gz*"
         self.out = f"{self.outdir}/../outs"
 
     @utils.add_log
@@ -59,7 +59,7 @@ class Analysis(Step):
     
     def cp_files(self):
         """copy files"""
-        files = [self.sce_rds, self.peak_res, self.cell_qc_metrics, f"{self.analysis_dir}/*.png", f"{self.analysis_dir}/*.h5", self.filtered_peak_count, self.fragment]
+        files = [self.sce_rds, self.peak_res, self.cell_qc_metrics, f"{self.analysis_dir}/peak/*.h5", self.fragment]
         for file in files:
             cmd = f"cp {file} {self.outdir}"
             subprocess.check_call(cmd, shell=True)
