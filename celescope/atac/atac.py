@@ -37,8 +37,8 @@ class ATAC(Step):
     def __init__(self, args, display_title=None):
         Step.__init__(self, args, display_title=display_title)
         
-        self.input_path = args.input_path
-        self.reference = args.reference
+        self.input_path = os.path.abspath(args.input_path)
+        self.reference =  os.path.abspath(args.reference)
         self.genomesize = args.genomesize
         self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
         
@@ -54,7 +54,7 @@ class ATAC(Step):
         cmd1 = (
             f"chromap --preset atac "
             f"-x {self.reference}/genome.index -r {self.reference}/genome.fa "
-            f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq"
+            f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq "
             f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq --barcode-whitelist {self.whitelist} "
             f"-o fragments_corrected_dedup_count.tsv -t {self.thread} "
         )
@@ -78,7 +78,7 @@ class ATAC(Step):
         
         # qc promoter
         cmd2 = (
-            f"bedtools intersect -wa -a fragments_corrected_dedup_count.tsv -b {self.reference}/promoter.bed > fragments_promoter.tsv;"
+            f"bedtools intersect -wa -a fragments_corrected_dedup_count.tsv -b {self.reference}/promoter.bed -u > fragments_promoter.tsv;"
             "sort -k4,4 -V fragments_promoter.tsv > fragments_promoter_sortbybarcode.tsv;"
             "bedtools groupby -i  fragments_promoter_sortbybarcode.tsv -g 4 -c 5 -o sum > singlecell_promoter.txt"
         )
@@ -110,7 +110,7 @@ class ATAC(Step):
         
         # call shortpeak
         cmd3 = (
-            f"macs2 callpeak -f BEDPE -g 4.97e+9 --outdir peak -n {self.sample}_150bp "
+            f"macs2 callpeak -f BEDPE -g {self.genomesize} --outdir peak -n {self.sample}_150bp "
             "-B -q 0.05 --nomodel --extsize=50 --SPMR --keep-dup all -t fragments_corrected_150bp.tsv"
         )
         
@@ -123,7 +123,7 @@ class ATAC(Step):
         )
         
         for cmd in [cmd1, cmd2, cmd3, cmd4]:
-            subprocess.check_call(cmd)
+            subprocess.check_call(cmd, shell=True)
             
     @utils.add_log
     def get_valid_cells(self):
@@ -144,7 +144,7 @@ class ATAC(Step):
         
         # filter
         cmd2 = (
-            f"MAESTRO scatac-qc --format h5 --peakcount test_peak_count.h5 "
+            f"MAESTRO scatac-qc --format h5 --peakcount peak/{self.sample}_peak_count.h5 "
             f"--peak-cutoff {self.peak_cutoff} --cell-cutoff {self.cell_cutoff} --directory peak --outprefix {self.sample}"
         )
         
@@ -309,7 +309,6 @@ class Cells(Maestro_metrics):
         self.df_barcode.to_csv(self.df_cell_metrics, sep='\t', index=False)
             
     def run(self):
-        self.gen_plot_data()
         self.count_overlap_peak()
         
         self.df_cell_barcode = self.df_barcode[self.df_barcode["barcode"].isin(self.cell_barcode)]

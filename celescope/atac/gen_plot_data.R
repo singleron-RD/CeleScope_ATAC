@@ -1,5 +1,6 @@
 library(MAESTRO)
 library(Seurat)
+library(argparse)
 
 parser <- ArgumentParser()
 parser$add_argument("--filtered_peak_count", help="filter peak count", required=TRUE)
@@ -16,7 +17,7 @@ outdir <- args$outdir
 sample <- args$sample
 
 filtered_peak_count = Read10X_h5(filtered_peak_count)
-rds.res <- ATACRunSeurat(inputMat = rds,
+rds.res <- ATACRunSeurat(inputMat = filtered_peak_count,
                                  project = sample,
                                  min.c = 0,
                                  min.p = 0,
@@ -28,6 +29,7 @@ rds.res <- ATACRunSeurat(inputMat = rds,
                                  peaks.pct = 0,
                                  peaks.logfc = 0,
                                  outdir = outdir)
+                                 
 saveRDS(rds.res, rds)
-df = merge(rds$ATAC@reductions$umap@cell.embeddings, rds$ATAC@meta.data, by = "row.names")
+df = merge(rds.res$ATAC@reductions$umap@cell.embeddings, rds.res$ATAC@meta.data, by = "row.names")
 write.csv(df, meta_data, quote=FALSE, row.names=FALSE)
