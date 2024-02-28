@@ -1,6 +1,8 @@
-library(MAESTRO)
 library(Seurat)
 library(argparse)
+library(Signac)
+library(Gmisc)
+library(ggplot2)
 
 parser <- ArgumentParser()
 parser$add_argument("--filtered_peak_count", help="filter peak count", required=TRUE)
@@ -17,19 +19,21 @@ outdir <- args$outdir
 sample <- args$sample
 
 filtered_peak_count = Read10X_h5(filtered_peak_count)
-rds.res <- ATACRunSeurat(inputMat = filtered_peak_count,
-                                 project = sample,
-                                 min.c = 0,
-                                 min.p = 0,
-                                 method = "LSI",
-                                 dims.use = 1:30,
-                                 cluster.res = 0.6,
-                                 only.pos = TRUE,
-                                 peaks.cutoff = 0,
-                                 peaks.pct = 0,
-                                 peaks.logfc = 0,
-                                 outdir = outdir)
-                                 
-saveRDS(rds.res, rds)
-df = merge(rds.res$ATAC@reductions$umap@cell.embeddings, rds.res$ATAC@meta.data, by = "row.names")
-write.csv(df, meta_data, quote=FALSE, row.names=FALSE)
+SeuratObj <- CreateSeuratObject(filtered_peak_count, project = sample, min.cells = 0, min.features = 0, assay = "ATAC")
+
+message("LSI analysis ...")
+SeuratObj <- fastDoCall("RunTFIDF", c(object = SeuratObj))
+SeuratObj <- FindTopFeatures(object = SeuratObj, min.cutoff = 'q0')
+SeuratObj <- fastDoCall("RunSVD", c(object = SeuratObj))
+
+message("UMAP analysis ...")
+SeuratObj <- RunUMAP(object = SeuratObj, reduction = "lsi", dims = 1:30)
+SeuratObj <- fastDoCall("FindNeighbors", c(object = SeuratObj, reduction = "lsi", dims = 1:30))
+SeuratObj <- fastDoCall("FindClusters", c(object = SeuratObj, resolution = 0.6))
+p1 <- DimPlot(object = SeuratObj, pt.size = 0.5, label = TRUE)
+ggsave(file.path(outdir, paste0(sample, "_cluster.png")), p1, width=5, height=4)
+
+df = merge(SeuratObj@reductions$umap@cell.embeddings, SeuratObj@meta.data, by = "row.names")
+write.csv(df, meta_data, quote=FALSE, row.names=FALSE)                     
+saveRDS(SeuratObj, rds)
+
