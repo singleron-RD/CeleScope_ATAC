@@ -41,6 +41,7 @@ class ATAC(Step):
         self.reference =  os.path.abspath(args.reference)
         self.genomesize = args.genomesize
         self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
+        #self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/884K-2024.txt"
         
         # cut-off
         self.peak_cutoff = args.peak_cutoff
@@ -184,12 +185,15 @@ class Maestro_metrics(Step):
         self.df_mapping = pd.read_csv(f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv",
                                       header=None, sep='\t', names=["chrom", "chromStart", "chromEnd", "barcode", "count"])
         self.df_barcode = pd.read_csv(f"{self.outdir}/singlecell.txt",
-                                      header=None, sep='\t', names=["barcode", "fragments", "fragments_overlapping_promoter"])
+                                      header=None, sep='\t', names=["barcode", "fragments", "overlap_promoter"])
+        self.df_barcode['frac_promoter'] = round(self.df_barcode['overlap_promoter'] / self.df_barcode['fragments'], 4)
+        
         self.df_fragments = pd.read_csv(f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv",
                                       header=None, sep='\t', names=["chr", "start", "end", "barcode", "count"])
         self.df_peaks = pd.read_csv(f"{self.outdir}/peak/{self.sample}_final_peaks.bed",
                                     header=None, sep='\t', names=["chr", "start", "end"])
         
+        # out 
         self.rds = f"{self.outdir}/{self.sample}.rds"
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
         self.meta_data = f"{self.outdir}/meta.csv"
@@ -313,6 +317,7 @@ class Cells(Maestro_metrics):
         
         self.df_cell_barcode = self.df_barcode[self.df_barcode["barcode"].isin(self.cell_barcode)]
         cell_num = len(self.cell_barcode)
+        
         self.add_metric(
             name = 'Estimated Number of Cells',
             value = len(self.cell_barcode),
@@ -338,18 +343,17 @@ class Cells(Maestro_metrics):
             help_info = 'Fraction of high-quality fragments with a valid barcode that are associated with cell-containing partitions.'           
         )
 
-        frac_peak = self.df_barcode[self.df_barcode['cell_called']==True]['frac_peak'].mean()
+        frac_peak = self.df_cell_barcode['frac_peak'].mean()
         self.add_metric(
             name = 'Fraction of Fragments Overlap with Peaks in Cells',
             value = f'{round(frac_peak * 100, 2)}%',
             help_info = 'The proportion of fragments in a cell to overlap with a peak.'           
         )
         
-        total_promoter = sum(self.df_barcode.fragments_overlapping_promoter)
-        cell_promoter = sum(self.df_cell_barcode.fragments_overlapping_promoter)
+        frac_promoter = self.df_cell_barcode['frac_promoter'].mean()
         self.add_metric(
             name = 'Fraction of fragments overlap with promoter in cells',
-            value = f'{round(cell_promoter / total_promoter * 100, 2)}%',
+            value = f'{round(frac_promoter * 100, 2)}%',
             help_info = 'The proportion of fragments in a cell to overlap with a promoter sequence.'           
         )
 
