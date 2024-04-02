@@ -119,7 +119,7 @@ class ATAC(Step):
         cmd4 = (
             f"cat peak/{self.sample}_peaks.narrowPeak peak/{self.sample}_150bp_peaks.narrowPeak \
                 | sort -k1,1 -k2,2n | cut -f 1-4 > tmp_peaks.bed;"
-            f"mergeBed -i tmp_peaks.bed > peak/{self.sample}_final_peaks.bed;"
+            f"mergeBed -i tmp_peaks.bed | grep -v '_' | grep -v 'chrEBV' > peak/{self.sample}_final_peaks.bed;"
             "rm tmp_peaks.bed"
         )
         
