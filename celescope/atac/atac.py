@@ -42,6 +42,7 @@ class ATAC(Step):
         self.genomesize = args.genomesize
         self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
         #self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/884K-2024.txt"
+        #self.whitelist = "/SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/test/20240403_10X/737K-cratac-v1_rev.txt"
         
         # cut-off
         self.peak_cutoff = args.peak_cutoff
@@ -119,7 +120,7 @@ class ATAC(Step):
         cmd4 = (
             f"cat peak/{self.sample}_peaks.narrowPeak peak/{self.sample}_150bp_peaks.narrowPeak \
                 | sort -k1,1 -k2,2n | cut -f 1-4 > tmp_peaks.bed;"
-            f"mergeBed -i tmp_peaks.bed | grep -v '_' | grep -v 'chrEBV' > peak/{self.sample}_final_peaks.bed;"
+            f"mergeBed -i tmp_peaks.bed > peak/{self.sample}_final_peaks.bed;"
             "rm tmp_peaks.bed"
         )
         
@@ -139,16 +140,17 @@ class ATAC(Step):
     def peak_count(self):
         """generate peak count matrix h5 and filtered h5 file"""
         cmd1 = (
-            f"MAESTRO scatac-peakcount --peak peak/{self.sample}_final_peaks.bed --fragment fragments_corrected_dedup_count.tsv "
-            f"--barcode validcells.txt --cores {self.thread} --directory peak --outprefix {self.sample}"
+            f'python {ROOT_PATH}/atac/scatac_peakcount.py --barcode validcells.txt '
+            f'--count_cutoff {self.count_cutoff} --cores {self.thread} --outprefix {self.sample}'
+            f'--fragment fragments_corrected_dedup_count.tsv --peak peak/{self.sample}_final_peaks.bed '
         )
         
         # filter
         cmd2 = (
-            f"MAESTRO scatac-qc --format h5 --peakcount peak/{self.sample}_peak_count.h5 "
-            f"--peak-cutoff {self.peak_cutoff} --cell-cutoff {self.cell_cutoff} --directory peak --outprefix {self.sample}"
+            f'python {ROOT_PATH}/atac/scatac_filter.py --peakcount peak/{self.sample}_peak_count.h5 '
+            f'--peak-cutoff {self.peak_cutoff} --cell-cutoff {self.cell_cutoff} --outprefix {self.sample}'
         )
-        
+
         for cmd in [cmd1, cmd2]:
             subprocess.check_call(cmd, shell=True)
     
