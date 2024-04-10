@@ -10,7 +10,6 @@ git clone https://github.com/singleron-RD/CeleScope_ATAC.git
 It is recommended to use [mamba](https://github.com/mamba-org/mamba) (which is a faster replacement for Conda):
 ```
 conda config --add channels defaults
-conda config --add channels liulab-dfci
 conda config --add channels bioconda
 conda config --add channels conda-forge
 conda install mamba -c conda-forge
