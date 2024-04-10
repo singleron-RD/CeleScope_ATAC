@@ -21,6 +21,7 @@ def get_opts_atac(parser, sub_program):
     parser.add_argument('--count_cutoff', type=int, help='Cutoff for the number of count in each cell', default=1000)
     parser.add_argument('--frip_cutoff', type=float, help='Cutoff for fraction of reads in promoter in each cell', default=0.2)
     parser.add_argument('--cell_cutoff', type=int,  help='Minimum number of cells covered by each peak', default=1)
+    parser.add_argument('--bclist', help='barcode list file', default="")
     if sub_program:
         s_common(parser)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
@@ -40,9 +41,14 @@ class ATAC(Step):
         self.input_path = os.path.abspath(args.input_path)
         self.reference =  os.path.abspath(args.reference)
         self.genomesize = args.genomesize
-        self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
-        #self.whitelist = f"{ROOT_PATH}/data/chemistry/atac/884K-2024.txt"
-        #self.whitelist = "/SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/test/20240403_10X/737K-cratac-v1_rev.txt"
+        self.bclist = args.bclist
+        
+        if not self.bclist:
+            self.bclist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
+            
+        #common f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
+        #new pattern f"{ROOT_PATH}/data/chemistry/atac/884K-2024.txt"
+        #10X "/SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/test/20240403_10X/737K-cratac-v1_rev.txt"
         
         # cut-off
         self.peak_cutoff = args.peak_cutoff
@@ -57,7 +63,7 @@ class ATAC(Step):
             f"chromap --preset atac "
             f"-x {self.reference}/genome.index -r {self.reference}/genome.fa "
             f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq "
-            f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq --barcode-whitelist {self.whitelist} "
+            f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq --barcode-whitelist {self.bclist} "
             f"-o fragments_corrected_dedup_count.tsv -t {self.thread} "
         )
 
@@ -141,14 +147,14 @@ class ATAC(Step):
         """generate peak count matrix h5 and filtered h5 file"""
         cmd1 = (
             f'python {ROOT_PATH}/atac/scatac_peakcount.py --barcode validcells.txt '
-            f'--count_cutoff {self.count_cutoff} --cores {self.thread} --outprefix {self.sample}'
+            f'--count_cutoff {self.count_cutoff} --cores {self.thread} --outprefix {self.sample} '
             f'--fragment fragments_corrected_dedup_count.tsv --peak peak/{self.sample}_final_peaks.bed '
         )
         
         # filter
         cmd2 = (
             f'python {ROOT_PATH}/atac/scatac_filter.py --peakcount peak/{self.sample}_peak_count.h5 '
-            f'--peak-cutoff {self.peak_cutoff} --cell-cutoff {self.cell_cutoff} --outprefix {self.sample}'
+            f'--peak_cutoff {self.peak_cutoff} --cell_cutoff {self.cell_cutoff} --outprefix {self.sample}'
         )
 
         for cmd in [cmd1, cmd2]:
