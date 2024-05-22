@@ -11,4 +11,4 @@ bioconda::r-signac>=1.1.1
 bioconda::htslib=1.17
 bioconda::bedtools=2.29.2
 bioconda::macs2=2.2.7.1
-bioconda::chromap=0.1.2
+bioconda::chromap=0.2.6
