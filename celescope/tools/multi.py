@@ -258,7 +258,7 @@ job_end
         cmd_line = self.get_cmd_line(step, sample)
         cmd = (
             f'{cmd_line} '
-            f'--fq1 {arr[0]} '
+            f'--fq2 {arr[1]} '
         )
         self.process_cmd(cmd, step, sample, m=1, x=1)
 
