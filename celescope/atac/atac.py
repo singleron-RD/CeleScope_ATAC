@@ -21,7 +21,6 @@ def get_opts_atac(parser, sub_program):
     parser.add_argument('--count_cutoff', type=int, help='Cutoff for the number of count in each cell', default=1000)
     parser.add_argument('--frip_cutoff', type=float, help='Cutoff for fraction of reads in promoter in each cell', default=0.2)
     parser.add_argument('--cell_cutoff', type=int,  help='Minimum number of cells covered by each peak', default=1)
-    parser.add_argument('--bclist', help='barcode list file', default="")
     if sub_program:
         s_common(parser)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
@@ -41,11 +40,18 @@ class ATAC(Step):
         self.input_path = os.path.abspath(args.input_path)
         self.reference =  os.path.abspath(args.reference)
         self.genomesize = args.genomesize
-        self.bclist = args.bclist
         
-        if not self.bclist:
-            self.bclist = f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
-            
+        self.chemistry = self.get_slot_key(
+            slot="metrics",
+            step_name="sample",
+            key="Chemistry",
+        )
+
+        if self.chemistry == "atac1":
+            self.bclist = f"{ROOT_PATH}/data/chemistry/atac1/857K-2023.txt"
+        else:
+            self.bclist = f"{ROOT_PATH}/data/chemistry/atac2/884K-2024.txt"
+        
         #common f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
         #new pattern f"{ROOT_PATH}/data/chemistry/atac/884K-2024.txt"
         #10X "/SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/test/20240403_10X/737K-cratac-v1_rev.txt"
