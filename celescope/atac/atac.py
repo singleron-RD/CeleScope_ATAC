@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np 
 import os
 import itertools
+import collections
+import tables
+import scipy.sparse as sp_sparse
 from multiprocessing import Pool
 from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
@@ -14,13 +17,42 @@ from celescope.tools.plotly_plot import Insert_plot
 __SUB_STEPS__ = ['mapping', 'cells']
 
 
+FeatureBCMatrix = collections.namedtuple('FeatureBCMatrix', ['ids', 'names', 'barcodes', 'matrix'])
+
+
+def read_10X_h5(filename):
+    """Read 10X HDF5 files, support both gene expression and peaks."""
+    with tables.open_file(filename, 'r') as f:
+        try:
+            group = f.get_node(f.root, 'matrix')
+        except tables.NoSuchNodeError:
+            print("Matrix group does not exist in this file.")
+            return None
+        feature_group = getattr(group, 'features')
+        ids = getattr(feature_group, 'id').read()
+        names = getattr(feature_group, 'name').read()
+        barcodes = getattr(group, 'barcodes').read()
+        data = getattr(group, 'data').read()
+        indices = getattr(group, 'indices').read()
+        indptr = getattr(group, 'indptr').read()
+        shape = getattr(group, 'shape').read()
+        matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
+        return FeatureBCMatrix(ids, names, barcodes, matrix)
+
+
 def get_opts_atac(parser, sub_program):
     parser.add_argument('--reference', help='Genome reference directory includes fasta, index, promoter bed file.', required=True)
     parser.add_argument('--genomesize', help='refer to www.genomesize.com. for example, 2.7e+9 for hs, 1.87e+9 for mm, 1.2e+8 for fruitfly', required=True)
-    parser.add_argument('--peak_cutoff', type=int, help='Minimum number of peaks included in each cell', default=500)
+    parser.add_argument('--peak_cutoff', help='Minimum number of peaks included in each cell', default='auto')
     parser.add_argument('--count_cutoff', type=int, help='Cutoff for the number of count in each cell', default=1000)
     parser.add_argument('--frip_cutoff', type=float, help='Cutoff for fraction of reads in promoter in each cell', default=0.2)
     parser.add_argument('--cell_cutoff', type=int,  help='Minimum number of cells covered by each peak', default=1)
+    parser.add_argument(
+        "--expected_target_cell_num", 
+        help="Expected cell number. If `--peak_cutoff` is provided, this argument is ignored.", 
+        type=int,
+        default=8000,
+    )
     if sub_program:
         s_common(parser)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
@@ -61,6 +93,7 @@ class ATAC(Step):
         self.count_cutoff = args.count_cutoff
         self.frip_cutoff = args.frip_cutoff
         self.cell_cutoff = args.cell_cutoff
+        self.expected_target_cell_num = args.expected_target_cell_num
     
     @utils.add_log
     def mapping(self):
@@ -149,23 +182,52 @@ class ATAC(Step):
         df["barcode"].to_csv("validcells.txt", header=None, index=None)
     
     @utils.add_log
-    def peak_count(self):
-        """generate peak count matrix h5 and filtered h5 file"""
-        cmd1 = (
+    def gen_peak_matrix(self):
+        """generate peak count matrix h5"""
+        
+        cmd = (
             f'python {ROOT_PATH}/atac/scatac_peakcount.py --barcode validcells.txt '
             f'--count_cutoff {self.count_cutoff} --cores {self.thread} --outprefix {self.sample} '
             f'--fragment fragments_corrected_dedup_count.tsv --peak peak/{self.sample}_final_peaks.bed '
         )
         
-        # filter
-        cmd2 = (
-            f'python {ROOT_PATH}/atac/scatac_filter.py --peakcount peak/{self.sample}_peak_count.h5 '
-            f'--peak_cutoff {self.peak_cutoff} --cell_cutoff {self.cell_cutoff} --outprefix {self.sample}'
+        subprocess.check_call(cmd, shell=True)
+    
+    @utils.add_log
+    def filter_peak_matrix(self):
+        """filter peak count matrix h5"""
+        raw_matrix = 'peak/{self.sample}_peak_count.h5'
+        peak_cutoff = ATAC.count_peak_cutoff(
+            raw_matrix, self.peak_cutoff, self.expected_target_cell_num
+        )
+        
+        cmd = (
+            f'python {ROOT_PATH}/atac/scatac_filter.py --peakcount {raw_matrix} '
+            f'--peak_cutoff {peak_cutoff} --cell_cutoff {self.cell_cutoff} --outprefix {self.sample}'
         )
 
-        for cmd in [cmd1, cmd2]:
-            subprocess.check_call(cmd, shell=True)
+        subprocess.check_call(cmd, shell=True)
     
+    @staticmethod
+    def count_peak_cutoff(raw_matrix, peak_cutoff, expected_target_cell_num):
+        if peak_cutoff == 'auto':
+            scatac_count = read_10X_h5(raw_matrix)
+            peakmatrix = scatac_count.matrix
+            features = scatac_count.names.tolist()
+            barcodes = scatac_count.barcodes.tolist()
+            if type(features[0]) == bytes:
+                features = [i.decode() for i in features]
+            if type(barcodes[0]) == bytes:
+                barcodes = [i.decode() for i in barcodes]
+            
+            peaks_per_cell = np.asarray((peakmatrix > 0).sum(axis=0))
+            sorted_counts = sorted(peaks_per_cell[0], reverse=True)
+            return int(np.percentile(sorted_counts[:expected_target_cell_num], 99) * 0.1)
+        
+        else:
+            return int(peak_cutoff)
+        
+        
     def run(self):
         cwd = os.getcwd()
         os.chdir(self.outdir)
@@ -173,7 +235,8 @@ class ATAC(Step):
         self.qcstat()
         self.call_peak()
         self.get_valid_cells()
-        self.peak_count()
+        self.gen_peak_matrix()
+        self.filter_peak_matrix()
         os.chdir(cwd)
 
 
