@@ -20,6 +20,7 @@ sample <- args$sample
 
 filtered_peak_count = Read10X_h5(filtered_peak_count)
 SeuratObj <- CreateSeuratObject(filtered_peak_count, project = sample, min.cells = 0, min.features = 0, assay = "ATAC")
+SeuratObj <- subset(SeuratObj, nCount_ATAC != 0)
 
 message("LSI analysis ...")
 SeuratObj <- fastDoCall("RunTFIDF", c(object = SeuratObj))
