@@ -196,10 +196,11 @@ class ATAC(Step):
     @utils.add_log
     def filter_peak_matrix(self):
         """filter peak count matrix h5"""
-        raw_matrix = 'peak/{self.sample}_peak_count.h5'
+        raw_matrix = f'peak/{self.sample}_peak_count.h5'
         peak_cutoff = ATAC.count_peak_cutoff(
             raw_matrix, self.peak_cutoff, self.expected_target_cell_num
         )
+        print(f'Peak Cutoff: {peak_cutoff}')
         
         cmd = (
             f'python {ROOT_PATH}/atac/scatac_filter.py --peakcount {raw_matrix} '
