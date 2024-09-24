@@ -1,3 +1,15 @@
+## 2024-09-06
+ - Change the default value of --peak_cutoff to auto to improve cell filter.
+ - Add parameter --expected_target_cell_num.
+ - Fix error in checkna(X): Missing values found in 'X'.
+
+## 2024-08-07
+ - Auto detect chemistry from R1-read.
+ - Remove bclist parameter.
+
+## 2024-05-22
+ - Use chromap-0.2.6 to avoid mapping fragments error.
+
 ## 2024-04-09
  - Add scatac peakcount and scatac filter script to generate h5 matrix file.
  - Replace separator to (":", "-") in h5 file to avoid error of downstream analysis.

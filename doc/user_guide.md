@@ -3,7 +3,7 @@
 ## Installation
 1. Clone repo
 ```
-git clone https://github.com/singleron-RD/CeleScope_ATAC.git
+git clone -b customized_ref https://github.com/singleron-RD/CeleScope_ATAC.git
 ```
 
 2. Create conda environment and install conda packages. 
@@ -17,23 +17,28 @@ cd CeleScope_ATAC
 mamba create -n celescope_atac -y --file conda_pkgs.txt
 ```
 
-3. Install celescope_atac
+3. Install celescope
 
-Make sure you have activated the `celescope_atac` conda environment before running `pip install celescope_atac`. 
+Make sure you have activated the conda environment before running `pip install .`.
 ```
 conda activate celescope_atac
-pip install celescope_atac
+pip install .
 ```
 
 ## Usage
-1. Make a atac reference
+1. Make atac referenceDir.
 
 ### Customized reference
 
 ```
-download genome.fasta and gene.gtf files.
+mkdir ref_path
+cd ref_path
+
+download fasta and gtf from ensembl and gunzip *.gz file.
+rename to genome.fa and gene.gtf.
+
 chromap -i -r genome.fa -o genome.index
-gtfToGenePred -genePredExt -geneNameAsName2 gene.gtf gene.tmp
+CeleScope_ATAC/celescope/tools/gtfToGenePred -genePredExt -geneNameAsName2 gene.gtf gene.tmp
 awk '{if($4>=2000) print $2"\t"$4-2000"\t"$4+2000"\t"$1"\t"$12"\t"$3}' gene.tmp >  promoter.bed
 ```
 
@@ -45,7 +50,6 @@ Under your working directory, write a shell script `run.sh` as
 multi_atac \
         --mapfile mapfile \
         --thread 8 \
-        --chemistry atac \
         --reference ref_path \
         --genomesize "2.7e+9"
         --mod shell
@@ -73,9 +77,9 @@ $ls fastq_dir2
 fastq_prefix2_1.fq.gz	fastq_prefix2_2.fq.gz	fastq_prefix2_3.fq.gz
 ```
 
-`--refernece` Required. The path of the genome reference directory that includes fasta, index, promoter bed file.
+`--refernece` Required. The path of the genome reference directory that includes genome.fa, genome.index, promoter.bed file.
 
-`--genomesize` Required. genome size. Refer to www.genomesize.com.
+`--genomesize` Required. genome size. Refer to www.genomesize.com. for example, 2.7e+9 for hs, 1.87e+9 for mm, 1.2e+8 for fruitfly.
 
 `--thread` Threads to use. The recommended setting is 8, and the maximum should not exceed 20.
 
@@ -90,4 +94,4 @@ sh ./shell/{sample}.sh
 Note that the `./shell/{sample}.sh` must be run under the working directory(You shouldn't run them under the `shell` directory)
 
 ## Main output
-- `{sample}/outs/` The output directory includes MACS2 peak calling result, peak count table and gene score table, as well as clustering result, cell type annotation result.
+- `{sample}/outs/` The output directory includes Filtered peak barcode matrix in hdf5 format, Barcoded and aligned fragment file, Fragment file index, Per-barcode fragment counts & metrics.
