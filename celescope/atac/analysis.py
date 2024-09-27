@@ -1,7 +1,7 @@
 import subprocess
 import pandas as pd 
 import math
-from celescope.tools.plotly_plot import Peak_plot, Umap_plot
+from celescope.tools.plotly_plot import Peak_plot, Umap_plot, Frag_dis_plot
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 
@@ -31,13 +31,25 @@ class Analysis(Step):
         self.fragment = f"{self.analysis_dir}/fragments_corrected_dedup_count.tsv.gz*"
         self.out = f"{self.outdir}/../outs"
 
+    @staticmethod
+    def cell_label(df):
+        if df["cell_called"] == True:
+            return "Cells"
+        else:
+            return "Non-cells"
+    
     @utils.add_log
     def add_metrics(self):
         """plot and add metrics.
         """
         df = pd.read_csv(self.cell_qc_metrics, sep='\t')
+        df['cell_called'] = df.apply(self.cell_label, axis=1)
+        
         Peakplot = Peak_plot(df=df).get_plotly_div()
         self.add_data(Peak_plot=Peakplot)
+
+        Fragdisplot = Frag_dis_plot(df=df).get_plotly_div()
+        self.add_data(Frag_dis_plot=Fragdisplot)
 
         df_peak = pd.read_csv(self.peak_res, sep='\t', header=None)
         total_peak = df_peak.shape[0]

@@ -1,3 +1,6 @@
+## 2024-09-27
+ - Add Fragment distribution plot in html.
+
 ## 2024-09-06
  - Change the default value of --peak_cutoff to auto to improve cell filter.
  - Add parameter --expected_target_cell_num.
