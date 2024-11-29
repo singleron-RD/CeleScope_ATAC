@@ -1,3 +1,6 @@
+## [1.1.0] - 2024-11-29
+ - Add --coef for auto peak-cutoff.
+
 ## 2024-09-27
  - Add Fragment distribution plot in html.
 
