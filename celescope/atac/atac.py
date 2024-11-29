@@ -53,6 +53,12 @@ def get_opts_atac(parser, sub_program):
         type=int,
         default=8000,
     )
+    parser.add_argument(
+        "--coef",
+        help="coef for auto peak cutoff, If `--peak_cutoff` is provided, this argument is ignored.",
+        type=float,
+        default=0.1
+    )
     if sub_program:
         s_common(parser)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
@@ -94,6 +100,7 @@ class ATAC(Step):
         self.frip_cutoff = args.frip_cutoff
         self.cell_cutoff = args.cell_cutoff
         self.expected_target_cell_num = args.expected_target_cell_num
+        self.coef = args.coef
     
     @utils.add_log
     def mapping(self):
@@ -198,7 +205,7 @@ class ATAC(Step):
         """filter peak count matrix h5"""
         raw_matrix = f'peak/{self.sample}_peak_count.h5'
         peak_cutoff = ATAC.count_peak_cutoff(
-            raw_matrix, self.peak_cutoff, self.expected_target_cell_num
+            raw_matrix, self.peak_cutoff, self.expected_target_cell_num, self.coef
         )
         print(f'Peak Cutoff: {peak_cutoff}')
         
@@ -210,7 +217,7 @@ class ATAC(Step):
         subprocess.check_call(cmd, shell=True)
     
     @staticmethod
-    def count_peak_cutoff(raw_matrix, peak_cutoff, expected_target_cell_num):
+    def count_peak_cutoff(raw_matrix, peak_cutoff, expected_target_cell_num, coef):
         if peak_cutoff == 'auto':
             scatac_count = read_10X_h5(raw_matrix)
             peakmatrix = scatac_count.matrix
@@ -223,7 +230,7 @@ class ATAC(Step):
             
             peaks_per_cell = np.asarray((peakmatrix > 0).sum(axis=0))
             sorted_counts = sorted(peaks_per_cell[0], reverse=True)
-            return int(np.percentile(sorted_counts[:expected_target_cell_num], 99) * 0.1)
+            return int(np.percentile(sorted_counts[:expected_target_cell_num], 99) * coef)
         
         else:
             return int(peak_cutoff)
