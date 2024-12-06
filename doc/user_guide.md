@@ -28,18 +28,55 @@ pip install .
 ## Usage
 1. Make atac referenceDir.
 
-### Customized reference
-
+### Homo sapiens
 ```
-mkdir ref_path
-cd ref_path
+mkdir hs_ensembl_99
+cd hs_ensembl_99
 
-download fasta and gtf from ensembl and gunzip *.gz file.
-rename to genome.fa and gene.gtf.
+wget ftp://ftp.ensembl.org/pub/release-99/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+wget ftp://ftp.ensembl.org/pub/release-99/gtf/homo_sapiens/Homo_sapiens.GRCh38.99.gtf.gz
 
-chromap -i -r genome.fa -o genome.index
-CeleScope_ATAC/celescope/tools/gtfToGenePred -genePredExt -geneNameAsName2 gene.gtf gene.tmp
-awk '{if($4>=2000) print $2"\t"$4-2000"\t"$4+2000"\t"$1"\t"$12"\t"$3}' gene.tmp >  promoter.bed
+gunzip Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+gunzip Homo_sapiens.GRCh38.99.gtf.gz
+
+conda activate celescope_atac
+celescope atac mkref \
+ --fasta Homo_sapiens.GRCh38.dna.primary_assembly.fa \
+ --gtf Homo_sapiens.GRCh38.99.gtf.gz \
+```
+
+### Mus musculus
+```
+mkdir mmu_ensembl_99
+cd mmu_ensembl_99
+
+wget ftp://ftp.ensembl.org/pub/release-99/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.primary_assembly.fa.gz
+wget ftp://ftp.ensembl.org/pub/release-99/gtf/mus_musculus/Mus_musculus.GRCm38.99.gtf.gz
+
+gunzip Mus_musculus.GRCm38.dna.primary_assembly.fa.gz 
+gunzip Mus_musculus.GRCm38.99.gtf.gz
+
+conda activate celescope_atac
+celescope atac mkref \
+ --fasta Mus_musculus.GRCm38.dna.primary_assembly.fa \
+ --gtf Mus_musculus.GRCm38.99.gtf \
+```
+
+### Customized species
+```
+mkdir customized_species
+cd customized_species
+
+wget customized_species.fa.gz
+wget customized_species.gtf.gz
+
+gunzip customized_species.fa.gz
+gunzip customized_species.gtf.gz
+
+conda activate celescope_atac
+celescope atac mkref \
+ --fasta customized_species.fa \
+ --gtf customized_species.gtf \
 ```
 
 2. Generate scripts for each sample
