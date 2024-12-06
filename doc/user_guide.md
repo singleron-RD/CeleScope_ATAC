@@ -3,7 +3,7 @@
 ## Installation
 1. Clone repo
 ```
-git clone -b customized_ref https://github.com/singleron-RD/CeleScope_ATAC.git
+git clone https://github.com/singleron-RD/CeleScope_ATAC.git
 ```
 
 2. Create conda environment and install conda packages. 
