@@ -1,3 +1,6 @@
+## [1.2.0] - 2024-12-10
+ - Add mkref step.
+
 ## [1.1.0] - 2024-11-29
  - Add --coef for auto peak-cutoff.
 
