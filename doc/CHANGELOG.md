@@ -1,3 +1,7 @@
+## [1.3.0] - 2025-01-10
+ - Bug fix: Cannot install gtfToGenePred.
+ - Fix plotly version==5.24.1.
+
 ## [1.2.0] - 2024-12-10
  - Add mkref step.
 
