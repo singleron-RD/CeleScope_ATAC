@@ -25,6 +25,7 @@ class Chemistry():
         '''
         'atac1': 'C6L4C8L4C6'
         'atac2': 'C4L4C7L4C5'
+        'atac3': 'C4L6C4L6C4'
         '''
         self.fq1 = fq1
         self.assay = assay
@@ -33,6 +34,7 @@ class Chemistry():
 
         self.pattern_dict_atac1, *_, self.linker_atac1_set_list, self.linker_atac1_mismatch_list = Barcode.parse_chemistry('atac1')
         self.pattern_dict_atac2, *_, self.linker_atac2_set_list, self.linker_atac2_mismatch_list = Barcode.parse_chemistry('atac2')
+        self.pattern_dict_atac3, *_, self.linker_atac3_set_list, self.linker_atac3_mismatch_list = Barcode.parse_chemistry('atac3')
 
 
     @utils.add_log
@@ -75,13 +77,19 @@ class Chemistry():
 
         """
 
-        # check flv_rna first. otherwise it may be considered as scopeV2.1.1 and scopeV2.2.1
+        # check atacV3 first. otherwise it may be considered as atacV2
         linker_atac1 = Barcode.get_seq_str(seq, self.pattern_dict_atac1["L"])
         bool_valid, _, _ = Barcode.check_seq_mismatch(
             [linker_atac1], self.linker_atac1_set_list, self.linker_atac1_mismatch_list)
         if bool_valid:
             return "atac1"
 
+        linker_atac3 = Barcode.get_seq_str(seq, self.pattern_dict_atac3["L"])
+        bool_valid, _, _ = Barcode.check_seq_mismatch(
+            [linker_atac3], self.linker_atac3_set_list, self.linker_atac3_mismatch_list)
+        if bool_valid:
+            return "atac3"
+        
         linker_atac2 = Barcode.get_seq_str(seq, self.pattern_dict_atac2["L"])
         bool_valid, _, _ = Barcode.check_seq_mismatch(
             [linker_atac2], self.linker_atac2_set_list, self.linker_atac2_mismatch_list)

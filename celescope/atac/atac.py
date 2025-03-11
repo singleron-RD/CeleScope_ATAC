@@ -87,8 +87,10 @@ class ATAC(Step):
 
         if self.chemistry == "atac1":
             self.bclist = f"{ROOT_PATH}/data/chemistry/atac1/857K-2023.txt"
-        else:
+        elif self.chemistry == "atac2":
             self.bclist = f"{ROOT_PATH}/data/chemistry/atac2/884K-2024.txt"
+        elif self.chemistry == "atac3":
+            self.bclist = f"{ROOT_PATH}/data/chemistry/atac3/884K-2025.txt"
         
         #common f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
         #new pattern f"{ROOT_PATH}/data/chemistry/atac/884K-2024.txt"
