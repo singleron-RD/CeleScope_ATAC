@@ -1,3 +1,6 @@
+## [1.4.0] - 2025-01-10
+ - add atac-V3 pattern.
+
 ## [1.3.0] - 2025-01-10
  - Bug fix: Cannot install gtfToGenePred.
  - Fix plotly version==5.24.1.
