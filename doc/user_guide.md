@@ -160,7 +160,7 @@ metadata <- read.csv(
 ### Column definitions
 
 |Column|Description|
-||------|--------------|
+|------|--------------|
 |barcode|barcode sequence|
 |fragments|number of fragments|
 |overlap_promoter|number of fragments overlapping promoter regions|
