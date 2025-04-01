@@ -132,3 +132,40 @@ Note that the `./shell/{sample}.sh` must be run under the working directory(You 
 
 ## Main output
 - `{sample}/outs/` The output directory includes Filtered peak barcode matrix in hdf5 format, Barcoded and aligned fragment file, Fragment file index, Per-barcode fragment counts & metrics.
+- `Fragments File` The pipeline outputs a BED-like tabular file, where each line represents a unique ATAC-seq fragment captured by the assay. Each fragment is created by two separate transposition events, which create the two ends of the observed fragment. Each unique fragment may generate multiple duplicate reads. These duplicate reads are collapsed into a single fragment record. The first three columns of the fragments file are defined as in the BED format, so the fragments file can be treated as BED file in many cases.The pipeline `outs/` folder contains fragments.tsv.gz and fragments.tsv.gz.tbi. The `fragments.tsv.gz` contains one line per unique fragment, with tab-separated fields as described below. The `fragments.tsv.gz.tbi` file is a tabix index of the fragment intervals facilitating random access to records from an arbitrary genomic interval. 
+
+### Column definitions
+
+|Column Number|Name|Description|
+|---|------|--------------|
+|1|chrom|Reference genome chromosome of fragment|
+|2|chromStart|Adjusted start position of fragment on chromosome|
+|3|chromEnd|Adjusted end position of fragment on chromosome|
+|4|barcode|The cell barcode of this fragment|
+|5|readSupport|The total number of read pairs associated with this fragment|
+
+- `Filtered_peak_count.h5` Filtered peak-barcode matrix in hdf5 format contains only detected cellular barcodes. Each row of the matrix represents a region of the genome (a peak), that is predicted to represent a region of open chromatin. Each value in the matrix represents the number of Tn5 integration sites for each cell-barcode that map within each peak.
+- `cell_qc_metrics.tsv` Tab-delimited text file which contains QC information associated with the fragments per barcode. Reading cell_qc_metrics.tsv as metadata (e.g., Signac)
+
+### Example
+```
+metadata <- read.csv(
+  file = "cell_qc_metrics.tsv",
+  header = TRUE,
+  row.names = 1,
+  sep="\t"
+)
+```
+
+### Column definitions
+
+|Column|Description|
+||------|--------------|
+|barcode|barcode sequence|
+|fragments|number of fragments|
+|overlap_promoter|number of fragments overlapping promoter regions|
+|frac_promoter|fraction of fragments overlapping promoter regions|
+|overlap_peaks|number of fragments overlapping peaks|
+|frac_peak|fraction of fragments overlapping peaks|
+|cell_called|whether barcode is associated with a cell|
+
