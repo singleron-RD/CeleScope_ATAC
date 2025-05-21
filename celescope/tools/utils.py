@@ -16,6 +16,7 @@ from functools import wraps
 import pandas as pd
 import pysam
 
+from celescope.tools.__init__ import FILTERED_MATRIX_DIR_SUFFIX, BARCODE_FILE_NAME, OUTS_DIR, TOOLS_DIR
 from celescope.__init__ import ROOT_PATH
 
 
@@ -316,3 +317,64 @@ def barcode_list_stamp(barcode_list, cut=500):
             m = 1
             stamp[n].append(i)
     return stamp, bc_num
+
+
+@add_log
+def get_matrix_dir_from_match_dir(match_dir):
+    """
+    Returns:
+        matrix_dir: PosixPath object
+    """
+    matrix_dir = f"{match_dir}/{OUTS_DIR}/{FILTERED_MATRIX_DIR_SUFFIX}"
+    if not os.path.exists(matrix_dir):
+        raise FileNotFoundError(f'{matrix_dir} not found')
+    
+    return matrix_dir
+
+
+@add_log
+def get_barcode_from_match_dir(match_dir):
+    '''
+    multi version compatible
+    Returns:
+        match_barcode: list
+        no_match_barcode: int
+    '''
+    matrix_dir = get_matrix_dir_from_match_dir(match_dir)
+    return get_barcode_from_matrix_dir(matrix_dir)
+
+
+@add_log
+def get_barcode_from_matrix_dir(matrix_dir):
+    """
+    Returns:
+        match_barcode: list
+        no_match_barcode: int
+    """
+  
+    match_barcode_file = get_matrix_file_path(matrix_dir, BARCODE_FILE_NAME)
+    match_barcode, n_match_barcode = read_one_col(match_barcode_file)
+
+    return match_barcode, n_match_barcode
+
+
+def get_matrix_file_path(matrix_dir, file_name):
+    """
+    compatible with non-gzip file
+    """
+    non_gzip = file_name.strip('.gz')
+    file_path_list = [f'{matrix_dir}/{file_name}', f'{matrix_dir}/{non_gzip}']
+    for file_path in file_path_list:
+        if os.path.exists(file_path):
+            return file_path
+
+
+@add_log
+def get_rna_atac_dict():
+    #df_sgr_atac_rna = pd.read_csv("/SGRNJ06/randd/USER/dingxiuheng/test_rd/dingxh/dxh/scATAC_mRNA_ARC/barcodegen_atac_rna_for_V3_6bp/method2/row_column_Interiaced/sgr-atac-rna-V3_rci_20250505.txt", sep="\t", header=None, names=["atac","rna"])
+    df_sgr_atac_rna = pd.read_csv(f"{TOOLS_DIR}/sgr-atac-rna-V3.txt", sep="\t", header=None, names=["atac","rna"])
+    # Celescope V2
+    df_sgr_atac_rna['rna'] = df_sgr_atac_rna['rna'].apply(lambda x: x[:9] + '_' + x[9:18] + '_' + x[18:])
+    rna_atac_dict = df_sgr_atac_rna.set_index("rna").to_dict(orient="dict")["atac"]
+    
+    return rna_atac_dict

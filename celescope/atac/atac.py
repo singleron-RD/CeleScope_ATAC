@@ -61,6 +61,7 @@ def get_opts_atac(parser, sub_program):
     )
     if sub_program:
         s_common(parser)
+        parser.add_argument('--match_dir', help='scRNA-seq match directory', required=True)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
     return parser
 
@@ -78,6 +79,7 @@ class ATAC(Step):
         self.input_path = os.path.abspath(args.input_path)
         self.reference =  os.path.abspath(args.reference)
         self.genomesize = args.genomesize
+        self.match_dir = args.match_dir
         
         self.chemistry = self.get_slot_key(
             slot="metrics",
@@ -103,7 +105,17 @@ class ATAC(Step):
         self.cell_cutoff = args.cell_cutoff
         self.expected_target_cell_num = args.expected_target_cell_num
         self.coef = args.coef
-    
+
+        if self.match_dir != 'None':
+            self.rna_atac_dict = utils.get_rna_atac_dict()
+            self.match_cell_barcodes, _ = utils.get_barcode_from_match_dir(self.match_dir)
+            self.match_cell_barcodes = [self.rna_atac_dict[i] for i in self.match_cell_barcodes]
+            self.peak_cutoff = 1
+            self.count_cutoff = 1
+            self.frip_cutoff = 0.01
+            self.cell_cutoff = 1
+
+
     @utils.add_log
     def mapping(self):
         """run chromap and process fragments"""
@@ -188,6 +200,8 @@ class ATAC(Step):
         df = df[df["fragments"] >= self.count_cutoff]
         df["fraction_in_promoter"] = df["fragments_overlapping_promoter"] / df["fragments"]
         df = df[df["fraction_in_promoter"] >= self.frip_cutoff]
+        if self.match_dir != 'None':
+            df = df[df['barcode'].isin(self.match_cell_barcodes)]
         df["barcode"].to_csv("validcells.txt", header=None, index=None)
     
     @utils.add_log

@@ -20,9 +20,11 @@ class Multi_atac(Multi):
         step = "atac"
         cmd_line = self.get_cmd_line(step, sample)
         input_path = f'{self.outdir_dic[sample]["barcode"]}'
+        match_dir = f'{self.col4_dict[sample]}'
         cmd = (
             f'{cmd_line} '
             f'--input_path {input_path} '
+            f'--match_dir {match_dir} '
         )
         self.process_cmd(cmd, step, sample, m=30, x=self.args.thread)
 
