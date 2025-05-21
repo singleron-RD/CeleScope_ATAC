@@ -1,3 +1,7 @@
+## [1.5.0] - 2025-05-20
+ - Match scRNA barcodes if provide 4th column in mapfile.
+ - Delete GGTGGGTGGGTG in 884K-2025 barcode list file.
+
 ## [1.4.0] - 2025-01-10
  - add atac-V3 pattern.
 
