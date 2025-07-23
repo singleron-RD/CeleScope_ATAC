@@ -371,10 +371,20 @@ def get_matrix_file_path(matrix_dir, file_name):
 
 @add_log
 def get_rna_atac_dict():
-    #df_sgr_atac_rna = pd.read_csv("/SGRNJ06/randd/USER/dingxiuheng/test_rd/dingxh/dxh/scATAC_mRNA_ARC/barcodegen_atac_rna_for_V3_6bp/method2/row_column_Interiaced/sgr-atac-rna-V3_rci_20250505.txt", sep="\t", header=None, names=["atac","rna"])
-    df_sgr_atac_rna = pd.read_csv(f"{TOOLS_DIR}/sgr-atac-rna-V3.txt", sep="\t", header=None, names=["atac","rna"])
+    df_sgr_atac_rna = pd.read_csv("/SGRNJ06/randd/USER/dingxiuheng/test_rd/dingxh/dxh/scATAC_mRNA_ARC/barcodegen_atac_rna_for_V3_6bp/method2/row_column_Interiaced/sgr-atac-rna-V3_rci_20250505.txt", sep="\t", header=None, names=["atac","rna"])
+    #df_sgr_atac_rna = pd.read_csv(f"{TOOLS_DIR}/sgr-atac-rna-V3.txt", sep="\t", header=None, names=["atac","rna"])
     # Celescope V2
-    df_sgr_atac_rna['rna'] = df_sgr_atac_rna['rna'].apply(lambda x: x[:9] + '_' + x[9:18] + '_' + x[18:])
+    #df_sgr_atac_rna['rna'] = df_sgr_atac_rna['rna'].apply(lambda x: x[:9] + '_' + x[9:18] + '_' + x[18:])
     rna_atac_dict = df_sgr_atac_rna.set_index("rna").to_dict(orient="dict")["atac"]
     
     return rna_atac_dict
+
+
+@add_log
+def get_atac_rna_dict():
+    df_sgr_atac_rna = pd.read_csv(f"{TOOLS_DIR}/sgr-atac-rna-V3.txt", sep="\t", header=None, names=["atac","rna"])
+    # Celescope V2
+    #df_sgr_atac_rna['rna'] = df_sgr_atac_rna['rna'].apply(lambda x: x[:9] + '_' + x[9:18] + '_' + x[18:])
+    atac_rna_dict = df_sgr_atac_rna.set_index("atac").to_dict(orient="dict")["rna"]
+    
+    return atac_rna_dict

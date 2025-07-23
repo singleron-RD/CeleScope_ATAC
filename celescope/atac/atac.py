@@ -68,9 +68,7 @@ def get_opts_atac(parser, sub_program):
 
 class ATAC(Step):
     """
-    ## Features  
     - Run ATAC.
-    ## Output
     """
 
     def __init__(self, args, display_title=None):
@@ -87,15 +85,6 @@ class ATAC(Step):
             key="Chemistry",
         )
 
-        if self.chemistry == "atac1":
-            self.bclist = f"{ROOT_PATH}/data/chemistry/atac1/857K-2023.txt"
-        elif self.chemistry == "atac2":
-            self.bclist = f"{ROOT_PATH}/data/chemistry/atac2/884K-2024.txt"
-        elif self.chemistry == "atac3":
-            self.bclist = f"{ROOT_PATH}/data/chemistry/atac3/884K-2025.txt"
-        
-        #common f"{ROOT_PATH}/data/chemistry/atac/857K-2023.txt"
-        #new pattern f"{ROOT_PATH}/data/chemistry/atac/884K-2024.txt"
         #10X "/SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/test/20240403_10X/737K-cratac-v1_rev.txt"
         
         # cut-off
@@ -107,9 +96,7 @@ class ATAC(Step):
         self.coef = args.coef
 
         if self.match_dir != 'None':
-            self.rna_atac_dict = utils.get_rna_atac_dict()
             self.match_cell_barcodes, _ = utils.get_barcode_from_match_dir(self.match_dir)
-            self.match_cell_barcodes = [self.rna_atac_dict[i] for i in self.match_cell_barcodes]
             self.peak_cutoff = 1
             self.count_cutoff = 1
             self.frip_cutoff = 0.01
@@ -123,7 +110,7 @@ class ATAC(Step):
             f"chromap --preset atac "
             f"-x {self.reference}/genome.index -r {self.reference}/genome.fa "
             f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq "
-            f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq --barcode-whitelist {self.bclist} "
+            f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq "
             f"-o fragments_corrected_dedup_count.tsv -t {self.thread} "
         )
 
