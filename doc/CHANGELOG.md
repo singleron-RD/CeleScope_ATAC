@@ -1,4 +1,8 @@
-## [1.5.1] - 2025-05-20
+## [1.5.2] - 2025-07-23
+ - Remove barcode-whitelist when mapping.
+ - Replace with scRNA barcode in barcode step.
+
+## [1.5.1] - 2025-07-04
  - update atac-V3.1 pattern.
 
 ## [1.5.0] - 2025-05-20
