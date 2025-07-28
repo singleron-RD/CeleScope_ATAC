@@ -96,15 +96,16 @@ multi_atac \
 1st column: Fastq file prefix.  
 2nd column: Fastq file directory path.  
 3rd column: Sample name, which is the prefix of all output files.  
+4th column: The single cell rna directory after running CeleScope is called `matched_dir`.
 
 Example
 
 Sample1 has 2 paired-end fastq files located in 2 different directories(fastq_dir1 and fastq_dir2). Sample2 has 1 paired-end fastq file located in fastq_dir1.
 ```
 $cat ./my.mapfile
-fastq_prefix1	fastq_dir1	sample1
-fastq_prefix2	fastq_dir2	sample1
-fastq_prefix3	fastq_dir1	sample2
+fastq_prefix1	fastq_dir1	sample1 sample1_matched_rna
+fastq_prefix2	fastq_dir2	sample1 sample1_matched_rna
+fastq_prefix3	fastq_dir1	sample2 sample2_matched_rna
 
 $ls fastq_dir1
 fastq_prefix1_1.fq.gz   fastq_prefix1_2.fq.gz	fastq_prefix1_3.fq.gz

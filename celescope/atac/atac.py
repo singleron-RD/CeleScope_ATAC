@@ -61,7 +61,7 @@ def get_opts_atac(parser, sub_program):
     )
     if sub_program:
         s_common(parser)
-        parser.add_argument('--match_dir', help='scRNA-seq match directory', required=True)
+        parser.add_argument('--match_dir', help='Matched scRNA-seq directory', required=True)
         parser.add_argument('--input_path', help='input_path from Barcode step.', required=True)
     return parser
 
@@ -78,15 +78,8 @@ class ATAC(Step):
         self.reference =  os.path.abspath(args.reference)
         self.genomesize = args.genomesize
         self.match_dir = args.match_dir
-        
-        self.chemistry = self.get_slot_key(
-            slot="metrics",
-            step_name="sample",
-            key="Chemistry",
-        )
 
         #10X "/SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/test/20240403_10X/737K-cratac-v1_rev.txt"
-        
         # cut-off
         self.peak_cutoff = args.peak_cutoff
         self.count_cutoff = args.count_cutoff
@@ -97,6 +90,7 @@ class ATAC(Step):
 
         if self.match_dir != 'None':
             self.match_cell_barcodes, _ = utils.get_barcode_from_match_dir(self.match_dir)
+            self.match_cell_barcodes = [item.replace('_', '') for item in self.match_cell_barcodes]
             self.peak_cutoff = 1
             self.count_cutoff = 1
             self.frip_cutoff = 0.01

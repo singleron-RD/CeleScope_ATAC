@@ -26,7 +26,14 @@ class Barcode(super_barcode.Barcode):
         super().__init__(args, display_title=display_title)
 
         self.fq3_list = args.fq3.split(",")
-        self.atac_rna_dict = utils.get_atac_rna_dict()
+        self.match_dir = args.match_dir
+        if self.match_dir != "None":
+            chemistry = self.get_slot_key(
+                slot="metrics",
+                step_name="sample",
+                key="Chemistry",
+            )
+            self.atac_rna_dict = utils.get_atac_rna_dict(chemistry)
 
     def open_files(self):
         
@@ -263,8 +270,9 @@ class Barcode(super_barcode.Barcode):
                     if umi:
                         umi += '_'
 
+                    if self.match_dir != 'None':
+                        cb = self.atac_rna_dict[cb]
                     qual2 = len(cb) * 'F'
-                    cb = self.atac_rna_dict[cb]
                     self.fh_fq3.write(f'@{cb}_{umi}{self.total_num}\n{seq3}\n+\n{qual3}\n')
                     self.fh_fq2.write(f'@{cb}_{umi}{self.total_num}\n{cb}\n+\n{qual2}\n')
                     self.fh_fq1.write(f'@{cb}_{umi}{self.total_num}\n{seq1}\n+\n{qual1}\n')                   

@@ -16,7 +16,7 @@ from functools import wraps
 import pandas as pd
 import pysam
 
-from celescope.tools.__init__ import FILTERED_MATRIX_DIR_SUFFIX, BARCODE_FILE_NAME, OUTS_DIR, TOOLS_DIR
+from celescope.tools.__init__ import FILTERED_MATRIX_DIR_SUFFIX, BARCODE_FILE_NAME, OUTS_DIR, DATA_DIR
 from celescope.__init__ import ROOT_PATH
 
 
@@ -381,10 +381,13 @@ def get_rna_atac_dict():
 
 
 @add_log
-def get_atac_rna_dict():
-    df_sgr_atac_rna = pd.read_csv(f"{TOOLS_DIR}/sgr-atac-rna-V3.txt", sep="\t", header=None, names=["atac","rna"])
+def get_atac_rna_dict(chemistry):
+    if chemistry == "atac3":
+        df_sgr_atac_rna = pd.read_csv(f"{DATA_DIR}/sgr-atac-rna-V3.txt", sep="\t", header=None, names=["atac","rna"])
+    elif chemistry == "atac2":
+        df_sgr_atac_rna = pd.read_csv(f"{DATA_DIR}/sgr-atac-rna-V2.txt", sep="\t", header=None, names=["atac","rna"])
     # Celescope V2
-    #df_sgr_atac_rna['rna'] = df_sgr_atac_rna['rna'].apply(lambda x: x[:9] + '_' + x[9:18] + '_' + x[18:])
+    # df_sgr_atac_rna['rna'] = df_sgr_atac_rna['rna'].apply(lambda x: x[:9] + '_' + x[9:18] + '_' + x[18:])
     atac_rna_dict = df_sgr_atac_rna.set_index("atac").to_dict(orient="dict")["rna"]
     
     return atac_rna_dict

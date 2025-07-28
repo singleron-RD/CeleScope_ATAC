@@ -16,6 +16,18 @@ class Multi_atac(Multi):
         --mod shell
     ``` 
     """
+    def barcode(self, sample):
+        step = "barcode"
+        arr = self.fq_dict[sample]
+        cmd_line = self.get_cmd_line(step, sample)
+        match_dir = f'{self.col4_dict[sample]}'
+        cmd = (
+            f'{cmd_line} '
+            f'--fq1 {arr[0]} --fq2 {arr[1]} --fq3 {arr[2]} '
+            f"--match_dir {match_dir} "
+        )
+        self.process_cmd(cmd, step, sample, m=5, x=1)
+
     def atac(self, sample):
         step = "atac"
         cmd_line = self.get_cmd_line(step, sample)

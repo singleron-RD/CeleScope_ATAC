@@ -11,6 +11,7 @@ PATTERN_DICT = {
 }
 
 TOOLS_DIR = os.path.dirname(celescope.__file__) + "/tools"
+DATA_DIR = os.path.dirname(celescope.__file__) + "/data"
 
 # count
 OUTS_DIR = 'outs'

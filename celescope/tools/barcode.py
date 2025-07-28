@@ -803,7 +803,7 @@ lowQual will be regarded as low-quality bases.',
     if sub_program:
         parser.add_argument('--fq1', help='R1 fastq file. Multiple files are separated by comma.', required=True)
         parser.add_argument('--fq2', help='R2 fastq file. Multiple files are separated by comma.', required=True)
-        parser.add_argument('--match_dir', help='Matched scRNA-seq directory, required for flv_trust4')
+        parser.add_argument('--match_dir', help='Matched scRNA-seq directory', required=True)
         parser.add_argument(
             '--stdout',
             help="Write output to standard output",
