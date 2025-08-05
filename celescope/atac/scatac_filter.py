@@ -34,7 +34,7 @@ def write_10X_h5(filename, matrix, features, barcodes, genome = 'GRCh38', dataty
     """Write 10X HDF5 files, support both gene expression and peaks."""
     f = h5py.File(filename, 'w')
     if datatype == 'Peak':
-       M = sp_sparse.csc_matrix(matrix, dtype=np.int8)
+       M = sp_sparse.csc_matrix(matrix, dtype=np.int32)
     else:
        M = sp_sparse.csc_matrix(matrix, dtype=np.float32)
     B = np.array(barcodes, dtype='|S200')
