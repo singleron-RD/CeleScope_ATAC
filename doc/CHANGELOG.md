@@ -1,3 +1,6 @@
+## [1.6.0] - 2025-08-05
+ - Bug fix: Negative count value in peak count file.
+
 ## [1.5.2] - 2025-07-23
  - Remove barcode-whitelist when mapping.
  - Replace with scRNA barcode in barcode step.
