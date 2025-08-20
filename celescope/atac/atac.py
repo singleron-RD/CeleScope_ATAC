@@ -6,6 +6,8 @@ import itertools
 import collections
 import tables
 import scipy.sparse as sp_sparse
+import scanpy as sc
+import episcanpy as epi
 from multiprocessing import Pool
 from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
@@ -278,35 +280,37 @@ class Maestro_metrics(Step):
         # out 
         self.rds = f"{self.outdir}/{self.sample}.rds"
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
-        self.meta_data = f"{self.outdir}/meta.csv"
-    
+        self.df_tsne_file = f"{self.outdir}/tsne_coord.tsv"
+
+
     @utils.add_log
-    def gen_plot_data(self):
-        """generate meta-data file with umap coord for plot.
+    def run_epi_scanpy(self):
+        """Use epiScanpy to cluster.
         """
-        cmd = (
-            f"Rscript {ROOT_PATH}/atac/gen_plot_data.R "
-            f"--filtered_peak_count {self.filtered_peak_count} "
-            f"--rds {self.rds} "
-            f"--meta_data {self.meta_data} "
-            f"--sample {self.sample} "
-            f"--outdir {self.outdir}"
-            
-        )
-        subprocess.check_call(cmd, shell=True)
-        
+        adata = sc.read_10x_h5(self.filtered_peak_count, gex_only=False)
+        epi.pp.lazy(adata)
+        epi.tl.leiden(adata)
+        df_tsne = adata.obsm.to_df()[["X_tsne1", "X_tsne2"]]
+        df_tsne["cluster"] = adata.obs.leiden
+        tsne_name_dict = {"X_tsne1": "tSNE_1", "X_tsne2": "tSNE_2"}
+        df_tsne = df_tsne.rename(tsne_name_dict, axis="columns")
+        df_tsne["cluster"] = df_tsne["cluster"].map(lambda x: int(x) + 1)
+        df_tsne.to_csv(self.df_tsne_file, sep="\t")
+
+
     def run(self):
-        self.gen_plot_data()
+        self.run_epi_scanpy()
 
 
 class Mapping(Maestro_metrics):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
-        
-        self.cell_barcode = utils.read_one_col(self.meta_data)[0]
-        del self.cell_barcode[0]
+
+        self.cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
+        self.cell_barcode = [item.split('\t')[0] for item in self.cell_barcode]
         self.df_mapping_cell = self.df_mapping[self.df_mapping["barcode"].isin(self.cell_barcode)]
-        
+
+
     def run(self):
 
         valid_reads = self.get_slot_key(
@@ -354,8 +358,9 @@ class Cells(Maestro_metrics):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.cell_barcode = utils.read_one_col(self.meta_data)[0]
-        del self.cell_barcode[0]
+        self.cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
+        self.cell_barcode = [item.split('\t')[0] for item in self.cell_barcode]
+
 
     @staticmethod
     @utils.add_log
