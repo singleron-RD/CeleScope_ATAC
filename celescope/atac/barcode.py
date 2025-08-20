@@ -35,6 +35,9 @@ class Barcode(super_barcode.Barcode):
             )
             self.atac_rna_dict = utils.get_atac_rna_dict(chemistry)
 
+        self.removed_barcodes_set = set(args.removed_barcodes.split(','))
+
+
     def open_files(self):
         
         self.out_fq2 = f'{self.out_prefix}_S1_L001_R2_001.fastq{self.suffix}'
@@ -262,6 +265,9 @@ class Barcode(super_barcode.Barcode):
                     else:
                         cb = "".join(seq_list)
 
+                    if cb in self.removed_barcodes_set:
+                        continue
+
                     self.clean_num += 1
                     self.barcode_qual_Counter.update(C_U_quals_ascii[:C_len])
                     self.umi_qual_Counter.update(C_U_quals_ascii[C_len:])
@@ -291,5 +297,6 @@ def barcode(args):
 
 def get_opts_barcode(parser, sub_program=True):
     super_barcode.get_opts_barcode(parser, sub_program)
+    parser.add_argument('--removed_barcodes', help='removed barcodes in valid reads.', default='GGTGGGTGGGTG')
     if sub_program:
         parser.add_argument('--fq3', help='R3 fastq file. Multiple files are separated by comma.', required=True)
