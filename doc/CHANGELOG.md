@@ -1,3 +1,9 @@
+## [1.7.0] - 2025-08-22
+ - Replace Seurat and Signac with epiScanpy.
+ - Remove redundant conda and R packages.
+ - Replace umap-plot with tSNE-plot.
+ - Add `--removed_barcodes` parameter.
+
 ## [1.6.0] - 2025-08-05
  - Bug fix: Negative count value in peak count file.
 
