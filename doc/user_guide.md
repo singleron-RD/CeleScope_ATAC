@@ -42,7 +42,7 @@ gunzip Homo_sapiens.GRCh38.99.gtf.gz
 conda activate celescope_atac
 celescope atac mkref \
  --fasta Homo_sapiens.GRCh38.dna.primary_assembly.fa \
- --gtf Homo_sapiens.GRCh38.99.gtf.gz \
+ --gtf Homo_sapiens.GRCh38.99.gtf \
 ```
 
 ### Mus musculus

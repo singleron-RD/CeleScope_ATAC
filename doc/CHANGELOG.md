@@ -1,3 +1,9 @@
+## [1.7.1] - 2025-08-22
+ - Update python version to 3.9.
+ - Update some packages version.
+ - Add `run_snapatac2` function to compute TSSe.
+ - Add `Median of TSS enrichment score` metric to evaluate ATAC-seq.
+
 ## [1.7.0] - 2025-08-22
  - Replace Seurat and Signac with epiScanpy.
  - Remove redundant conda and R packages.
