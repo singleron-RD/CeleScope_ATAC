@@ -1,4 +1,4 @@
-## [1.7.1] - 2025-08-22
+## [1.7.1] - 2025-08-25
  - Update python version to 3.9.
  - Update some packages version.
  - Add `run_snapatac2` function to compute TSSe.

@@ -33,7 +33,7 @@ class Mkref:
         self.files["gtf"] = self.gtf
         self.meta["genome_type"] = "atac"
         self.meta["celescope_version"] = __VERSION__
-        
+
     def __call__(self):
         self.rename()
         self.build_index()
@@ -53,19 +53,21 @@ class Mkref:
 
     @utils.add_log
     def build_index(self):
-        cmd = "chromap -i -r genome.fa -o genome.index" 
+        cmd = "chromap -i -r genome.fa -o genome.index"
         subprocess.check_call(cmd, shell=True)
-        
+
     @utils.add_log
     def gtf_to_genepred(self):
-        cmd = f"{TOOLS_DIR}/gtfToGenePred -genePredExt -geneNameAsName2 gene.gtf gene.tmp"
+        cmd = (
+            f"{TOOLS_DIR}/gtfToGenePred -genePredExt -geneNameAsName2 gene.gtf gene.tmp"
+        )
         subprocess.check_call(cmd, shell=True)
-        
+
     @utils.add_log
     def gen_promoter(self):
-        cmd = '''awk '{if($4>=2000) print $2"\t"$4-2000"\t"$4+2000"\t"$1"\t"$12"\t"$3}' gene.tmp > promoter.bed'''
+        cmd = """awk '{if($4>=2000) print $2"\t"$4-2000"\t"$4+2000"\t"$1"\t"$12"\t"$3}' gene.tmp > promoter.bed"""
         subprocess.check_call(cmd, shell=True)
-    
+
     def write_config(self):
         config = configparser.ConfigParser()
         config.optionxform = str
