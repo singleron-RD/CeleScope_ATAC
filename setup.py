@@ -18,7 +18,7 @@ entry_dict = {
 
 
 setuptools.setup(
-    name="celescope",
+    name="celescope_atac",
     version=__VERSION__,
     author="chenjunjie",
     author_email="chenjunjie@singleronbio.com",
