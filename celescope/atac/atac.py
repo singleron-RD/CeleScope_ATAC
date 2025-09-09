@@ -265,9 +265,9 @@ class ATAC(Step):
             peakmatrix = scatac_count.matrix
             features = scatac_count.names.tolist()
             barcodes = scatac_count.barcodes.tolist()
-            if type(features[0]) == bytes:
+            if isinstance(features[0], bytes):
                 features = [i.decode() for i in features]
-            if type(barcodes[0]) == bytes:
+            if isinstance(barcodes[0], bytes):
                 barcodes = [i.decode() for i in barcodes]
 
             peaks_per_cell = np.asarray((peakmatrix > 0).sum(axis=0))
