@@ -30,36 +30,36 @@ pip install .
 
 ### Homo sapiens
 ```
-mkdir hs_ensembl_99
-cd hs_ensembl_99
+mkdir homo_sapiens_109
+cd homo_sapiens_109
 
-wget ftp://ftp.ensembl.org/pub/release-99/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
-wget ftp://ftp.ensembl.org/pub/release-99/gtf/homo_sapiens/Homo_sapiens.GRCh38.99.gtf.gz
+wget https://ftp.ensembl.org/pub/release-109/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+wget https://ftp.ensembl.org/pub/release-109/gtf/homo_sapiens/Homo_sapiens.GRCh38.109.gtf.gz
 
 gunzip Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
-gunzip Homo_sapiens.GRCh38.99.gtf.gz
+gunzip Homo_sapiens.GRCh38.109.gtf.gz
 
 conda activate celescope_atac
 celescope atac mkref \
  --fasta Homo_sapiens.GRCh38.dna.primary_assembly.fa \
- --gtf Homo_sapiens.GRCh38.99.gtf \
+ --gtf Homo_sapiens.GRCh38.109.gtf \
 ```
 
 ### Mus musculus
 ```
-mkdir mmu_ensembl_99
-cd mmu_ensembl_99
+mkdir Mus_musculus_109
+cd Mus_musculus_109
 
-wget ftp://ftp.ensembl.org/pub/release-99/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.primary_assembly.fa.gz
-wget ftp://ftp.ensembl.org/pub/release-99/gtf/mus_musculus/Mus_musculus.GRCm38.99.gtf.gz
+wget https://ftp.ensembl.org/pub/release-109/fasta/mus_musculus/dna/Mus_musculus.GRCm39.dna.primary_assembly.fa.gz
+wget https://ftp.ensembl.org/pub/release-109/gtf/mus_musculus/Mus_musculus.GRCm39.109.gtf.gz
 
-gunzip Mus_musculus.GRCm38.dna.primary_assembly.fa.gz 
-gunzip Mus_musculus.GRCm38.99.gtf.gz
+gunzip Mus_musculus.GRCm39.dna.primary_assembly.fa.gz
+gunzip Mus_musculus.GRCm39.109.gtf.gz
 
 conda activate celescope_atac
 celescope atac mkref \
- --fasta Mus_musculus.GRCm38.dna.primary_assembly.fa \
- --gtf Mus_musculus.GRCm38.99.gtf \
+ --fasta Mus_musculus.GRCm39.dna.primary_assembly.fa \
+ --gtf Mus_musculus.GRCm39.109.gtf \
 ```
 
 ### Customized species
