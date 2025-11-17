@@ -1,3 +1,8 @@
+## [1.8.0] - 2025-11-14
+ - Remove episcanpy package.
+ - Delete mitochondrial gene in fragments.
+ - Replace LSI-method with PCA.
+
 ## [1.7.1] - 2025-08-25
  - Update python version to 3.9.
  - Update some packages version.

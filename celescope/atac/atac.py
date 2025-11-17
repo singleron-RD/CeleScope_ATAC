@@ -7,7 +7,7 @@ import collections
 import tables
 import scipy.sparse as sp_sparse
 import scanpy as sc
-import episcanpy as epi
+from sklearn.decomposition import TruncatedSVD
 from multiprocessing import Pool
 from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
@@ -146,12 +146,14 @@ class ATAC(Step):
             f"-o fragments_corrected_dedup_count.tsv -t {self.thread} "
         )
 
-        cmd2 = (
+        cmd2 = "grep -v 'chrM|MT' fragments_corrected_dedup_count.tsv > tmp && mv tmp fragments_corrected_dedup_count.tsv"
+
+        cmd3 = (
             "bgzip -c fragments_corrected_dedup_count.tsv > fragments_corrected_dedup_count.tsv.gz;"
             "tabix -p bed fragments_corrected_dedup_count.tsv.gz"
         )
 
-        for cmd in [cmd1, cmd2]:
+        for cmd in [cmd1, cmd2, cmd3]:
             subprocess.check_call(cmd, shell=True)
 
     @utils.add_log
@@ -312,6 +314,7 @@ class Maestro_metrics(Step):
         self.filtered_peak_count = (
             f"{self.outdir}/peak/{self.sample}_filtered_peak_count.h5"
         )
+        self.adata = sc.read_10x_h5(self.filtered_peak_count, gex_only=False)
         self.df_mapping = pd.read_csv(
             f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv",
             header=None,
@@ -342,25 +345,83 @@ class Maestro_metrics(Step):
         )
 
         # out
-        self.rds = f"{self.outdir}/{self.sample}.rds"
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
         self.df_tsne_file = f"{self.outdir}/tsne_coord.tsv"
 
     @utils.add_log
-    def run_epi_scanpy(self):
-        """Use epiScanpy to cluster."""
-        adata = sc.read_10x_h5(self.filtered_peak_count, gex_only=False)
-        epi.pp.lazy(adata)
-        epi.tl.leiden(adata)
-        df_tsne = adata.obsm.to_df()[["X_tsne1", "X_tsne2"]]
-        df_tsne["cluster"] = adata.obs.leiden
+    def run_tfidf(self):
+        """Running TF-IDF normalization"""
+        layer_name = "tfidf"
+        X = self.adata.X
+        if not sp_sparse.issparse(X):
+            X = sp_sparse.csr_matrix(X)
+
+        # TF-IDF
+        cell_sum = np.array(X.sum(axis=1)).flatten()
+        tf = X.multiply(1 / cell_sum[:, None])
+        N = X.shape[0]
+        peak_n = np.array((X > 0).sum(axis=0)).flatten()
+        idf = np.log1p(N / (1 + peak_n))
+        tfidf = tf.multiply(idf)
+        self.adata.layers[layer_name] = tfidf.tocsr()
+        # log1p
+        sc.pp.log1p(self.adata)
+
+    @utils.add_log
+    def run_hvg(self):
+        """sc.highly_variable_genes()"""
+        sc.pp.highly_variable_genes(self.adata)
+
+    @utils.add_log
+    def run_svd(self):
+        """Running SVD"""
+        n_components = 30
+        layer = "tfidf"
+        key_added = "X_lsi"
+        X = self.adata.layers[layer]
+        if not sp_sparse.issparse(X):
+            X = sp_sparse.csr_matrix(X)
+
+        svd = TruncatedSVD(
+            n_components=n_components, random_state=0, algorithm="randomized", n_iter=3
+        )
+        lsi = svd.fit_transform(X)
+        self.adata.obsm[key_added] = lsi
+        self.adata.uns["lsi"] = {"svd": svd}
+
+    @utils.add_log
+    def run_neighbors(self):
+        """Computing neighbors using LSI"""
+        sc.pp.neighbors(self.adata, use_rep="X_lsi", n_neighbors=30, n_pcs=30)
+
+    @utils.add_log
+    def run_tsne(self):
+        """Running TSNE"""
+        sc.tl.tsne(self.adata, use_rep="X_lsi", n_pcs=30, perplexity=30, random_state=0)
+
+    @utils.add_log
+    def run_leiden(self):
+        """FindClusters (Leiden)"""
+        sc.tl.leiden(self.adata, resolution=0.8)
+
+    @utils.add_log
+    def write_tsne(self):
+        df_tsne = self.adata.obsm.to_df()[["X_tsne1", "X_tsne2"]]
+        df_tsne["cluster"] = self.adata.obs.leiden
         tsne_name_dict = {"X_tsne1": "tSNE_1", "X_tsne2": "tSNE_2"}
         df_tsne = df_tsne.rename(tsne_name_dict, axis="columns")
         df_tsne["cluster"] = df_tsne["cluster"].map(lambda x: int(x) + 1)
         df_tsne.to_csv(self.df_tsne_file, sep="\t")
 
+    @utils.add_log
     def run(self):
-        self.run_epi_scanpy()
+        self.run_tfidf()
+        self.run_hvg()
+        self.run_svd()
+        self.run_neighbors()
+        self.run_tsne()
+        self.run_leiden()
+        self.write_tsne()
 
 
 class Mapping(Maestro_metrics):
