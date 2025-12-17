@@ -1,7 +1,7 @@
 ## [1.8.1] - 2025-11-14
  - Add `--keep_mt` parameter to keep mitochondrial gene in fragments.
  - Modify the default values of some parameters to avoid mismatch cell numbers when providing scRNA match_dir.
- - Replace `TSS enrichment score` with `Median of TSS enrichment score`.
+ - Replace `Median of TSS enrichment score` with `TSS enrichment score`.
  - Fix abnormal color of the barcode rank plot.
 
 ## [1.8.0] - 2025-11-14
