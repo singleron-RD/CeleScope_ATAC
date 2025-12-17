@@ -64,10 +64,10 @@ def write_10X_h5(
 def Filter(rawmatrix, feature, barcode, peak_cutoff, cell_cutoff, outprefix):
     peaks_per_cell = np.asarray((rawmatrix > 0).sum(axis=0))
 
-    passed_cell = peaks_per_cell > peak_cutoff
+    passed_cell = peaks_per_cell >= peak_cutoff
 
     cells_per_peak = np.asarray((rawmatrix > 0).sum(axis=1))
-    passed_peak = cells_per_peak > cell_cutoff
+    passed_peak = cells_per_peak >= cell_cutoff
     passed_peak = np.transpose(passed_peak)
 
     # gene = [True]*rawmatrix.shape[0]

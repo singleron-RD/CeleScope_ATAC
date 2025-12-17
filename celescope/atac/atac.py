@@ -90,6 +90,9 @@ def get_opts_atac(parser, sub_program):
         type=float,
         default=0.1,
     )
+    parser.add_argument(
+        "--keep_mt", help="keep mitochondrial gene in fragments. ", action="store_true"
+    )
     if sub_program:
         s_common(parser)
         parser.add_argument(
@@ -130,10 +133,10 @@ class ATAC(Step):
             self.match_cell_barcodes = [
                 item.replace("_", "") for item in self.match_cell_barcodes
             ]
-            self.peak_cutoff = 1
-            self.count_cutoff = 1
-            self.frip_cutoff = 0.01
-            self.cell_cutoff = 1
+            self.peak_cutoff = 0
+            self.count_cutoff = 0
+            self.frip_cutoff = 0
+            self.cell_cutoff = 0
 
     @utils.add_log
     def mapping(self):
@@ -146,14 +149,18 @@ class ATAC(Step):
             f"-o fragments_corrected_dedup_count.tsv -t {self.thread} "
         )
 
-        cmd2 = "grep -v 'chrM|MT' fragments_corrected_dedup_count.tsv > tmp && mv tmp fragments_corrected_dedup_count.tsv"
+        cmd2 = "grep -Ev 'chrM|MT' fragments_corrected_dedup_count.tsv > tmp && mv tmp fragments_corrected_dedup_count.tsv"
 
         cmd3 = (
             "bgzip -c fragments_corrected_dedup_count.tsv > fragments_corrected_dedup_count.tsv.gz;"
             "tabix -p bed fragments_corrected_dedup_count.tsv.gz"
         )
 
-        for cmd in [cmd1, cmd2, cmd3]:
+        cmds = [cmd1, cmd2, cmd3]
+        if self.args.keep_mt:
+            del cmds[1]
+
+        for cmd in cmds:
             subprocess.check_call(cmd, shell=True)
 
     @utils.add_log
@@ -430,6 +437,7 @@ class Mapping(Maestro_metrics):
 
         self.cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
         self.cell_barcode = [item.split("\t")[0] for item in self.cell_barcode]
+        del self.cell_barcode[0]
         self.df_mapping_cell = self.df_mapping[
             self.df_mapping["barcode"].isin(self.cell_barcode)
         ]
@@ -486,6 +494,7 @@ class Cells(Maestro_metrics):
 
         self.cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
         self.cell_barcode = [item.split("\t")[0] for item in self.cell_barcode]
+        del self.cell_barcode[0]
 
     @staticmethod
     @utils.add_log
@@ -594,6 +603,7 @@ class Cells(Maestro_metrics):
         )
 
         self.df_barcode.sort_values(by="overlap_peaks", ascending=False, inplace=True)
+        self.df_barcode.iloc[0, -1] = True
         self.add_data(
             chart=get_plot_elements.plot_barcode_rank(
                 self.df_barcode, log_uniform=False

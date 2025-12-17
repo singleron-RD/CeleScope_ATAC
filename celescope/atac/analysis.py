@@ -1,7 +1,6 @@
 import subprocess
 import snapatac2 as snap
 import pandas as pd
-import numpy as np
 import math
 import os
 from celescope.tools.plotly_plot import Peak_plot, Tsne_plot, Frag_dis_plot
@@ -68,11 +67,11 @@ class Analysis(Step):
         data_cell = data[data.obs.index.isin(cell_barcode)]
         snap.metrics.tsse(data_cell, genome)
         data_cell.obs.tsse = data_cell.obs.tsse.astype(float)
-        median_tsse = round(np.median(data_cell.obs["tsse"]), 2)
+        tsse = round(max(data_cell.obs["tsse"]), 2)
         self.add_metric(
-            name="Median of TSS enrichment score",
-            value=median_tsse,
-            help_info="Median of Transcription Start Site (TSS) Enrichment Score.",
+            name="TSS enrichment score",
+            value=tsse,
+            help_info="Transcription Start Site (TSS) Enrichment Score.",
         )
 
     @utils.add_log
