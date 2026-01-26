@@ -52,6 +52,16 @@ class Multi_atac(Multi):
         )
         self.process_cmd(cmd, step, sample, m=10, x=1)
 
+    def cells(self, sample):
+        step = "cells"
+        analysis_dir = f'{self.outdir_dic[sample]["atac"]}'
+        match_dir = f"{self.col4_dict[sample]}"
+        cmd_line = self.get_cmd_line(step, sample)
+        cmd = (
+            f"{cmd_line} " f"--analysis_dir {analysis_dir} " f"--match_dir {match_dir} "
+        )
+        self.process_cmd(cmd, step, sample, m=10, x=1)
+
     def merge_report(self):
         step = "merge_report"
         _index = self.STEPS.index("atac") + 1

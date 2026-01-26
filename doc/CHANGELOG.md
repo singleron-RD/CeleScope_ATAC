@@ -1,4 +1,8 @@
-## [1.8.1] - 2025-11-14
+## [1.8.2] - 2026-01-24
+ - Add cells step to keep the cell numbers of RNA and ATAC consistent.
+ - Filter ATAC cells while providing match_dir.
+
+## [1.8.1] - 2025-12-17
  - Add `--keep_mt` parameter to keep mitochondrial gene in fragments.
  - Modify the default values of some parameters to avoid mismatch cell numbers when providing scRNA match_dir.
  - Replace `Median of TSS enrichment score` with `TSS enrichment score`.

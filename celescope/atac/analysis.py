@@ -16,7 +16,9 @@ def get_opts_analysis(parser, sub_program):
     )
     if sub_program:
         s_common(parser)
-        parser.add_argument("--analysis_dir", help="analysis directory", required=True)
+        parser.add_argument(
+            "--analysis_dir", help="atac analysis directory", required=True
+        )
         parser.add_argument(
             "--filtered_peak_count", help="filtered peak count h5 file", required=True
         )

@@ -133,10 +133,6 @@ class ATAC(Step):
             self.match_cell_barcodes = [
                 item.replace("_", "") for item in self.match_cell_barcodes
             ]
-            self.peak_cutoff = 0
-            self.count_cutoff = 0
-            self.frip_cutoff = 0
-            self.cell_cutoff = 0
 
     @utils.add_log
     def mapping(self):
