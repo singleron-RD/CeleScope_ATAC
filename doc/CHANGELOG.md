@@ -1,6 +1,7 @@
 ## [1.8.2] - 2026-01-24
  - Add cells step to keep the cell numbers of RNA and ATAC consistent.
  - Filter ATAC cells while providing match_dir.
+ - Add `--out_sam` parameter to output SAM file.
 
 ## [1.8.1] - 2025-12-17
  - Add `--keep_mt` parameter to keep mitochondrial gene in fragments.

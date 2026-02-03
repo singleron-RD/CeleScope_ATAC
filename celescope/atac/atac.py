@@ -93,6 +93,7 @@ def get_opts_atac(parser, sub_program):
     parser.add_argument(
         "--keep_mt", help="keep mitochondrial gene in fragments. ", action="store_true"
     )
+    parser.add_argument("--out_sam", help="SAM file output. ", action="store_true")
     if sub_program:
         s_common(parser)
         parser.add_argument(
@@ -152,9 +153,19 @@ class ATAC(Step):
             "tabix -p bed fragments_corrected_dedup_count.tsv.gz"
         )
 
+        cmd4 = (
+            f"chromap --preset atac "
+            f"-x {self.reference}/genome.index -r {self.reference}/genome.fa "
+            f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq "
+            f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq "
+            f"--SAM -o alignment.sam -t {self.thread} "
+        )
+
         cmds = [cmd1, cmd2, cmd3]
         if self.args.keep_mt:
             del cmds[1]
+        if self.args.out_sam:
+            cmds.append(cmd4)
 
         for cmd in cmds:
             subprocess.check_call(cmd, shell=True)
