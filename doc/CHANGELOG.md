@@ -1,3 +1,6 @@
+## [1.8.3] - 2026-03-24
+ - Replace `TSS enrichment score` with `Median of TSS enrichment score`.
+
 ## [1.8.2] - 2026-01-24
  - Add cells step to keep the cell numbers of RNA and ATAC consistent.
  - Filter ATAC cells while providing match_dir.
