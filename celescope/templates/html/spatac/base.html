@@ -1,0 +1,18 @@
+{% include "html/utils/start.html"%}
+
+    {% if mapping_summary is defined %}
+    {% set step_summary = mapping_summary %}
+    {% include "html/atac/mapping.html"%}
+    {% endif %} 
+
+    {% if cells_summary is defined %}
+    {% set step_summary = cells_summary %}
+    {% include "html/atac/cells.html"%}
+    {% endif %}
+
+    {% if analysis_summary is defined %}
+    {% set step_summary = analysis_summary %}
+    {% include "html/atac/analysis.html"%}
+    {% endif %}
+
+{% include "html/utils/end.html"%}

@@ -26,6 +26,7 @@ class Chemistry:
         'atac1': 'C6L4C8L4C6'
         'atac2': 'C4L4C7L4C5'
         'atac3': 'C4L6C4L6C4'
+        'spatac1': 'C8L8C8'
         """
         self.fq1 = fq1
         self.assay = assay
@@ -50,6 +51,12 @@ class Chemistry:
             self.linker_atac3_set_list,
             self.linker_atac3_mismatch_list,
         ) = Barcode.parse_chemistry("atac3")
+        (
+            self.pattern_dict_spatac1,
+            *_,
+            self.linker_spatac1_set_list,
+            self.linker_spatac1_mismatch_list,
+        ) = Barcode.parse_chemistry("spatac1")
 
     @utils.add_log
     def check_chemistry(self):
@@ -113,6 +120,15 @@ class Chemistry:
         )
         if bool_valid:
             return "atac2"
+
+        linker_spatac1 = Barcode.get_seq_str(seq, self.pattern_dict_spatac1["L"])
+        bool_valid, _, _ = Barcode.check_seq_mismatch(
+            [linker_spatac1],
+            self.linker_spatac1_set_list,
+            self.linker_spatac1_mismatch_list,
+        )
+        if bool_valid:
+            return "spatac1"
 
         return
 
