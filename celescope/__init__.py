@@ -1,15 +1,13 @@
 import os
 
-__VERSION__ = "1.8.3"
+__VERSION__ = "1.8.4"
 __version__ = __VERSION__
 
-ASSAY_LIST = [
-    "atac",
-]
+ASSAY_LIST = ["atac", "spatac"]
 
 ROOT_PATH = os.path.dirname(__file__)
 
-RELEASED_ASSAYS = ["atac"]
+RELEASED_ASSAYS = ["atac", "spatac"]
 
 # argument help
 HELP_DICT = {
