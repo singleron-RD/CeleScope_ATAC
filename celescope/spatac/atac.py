@@ -314,17 +314,17 @@ class ATAC(Step):
 
 
 def atac(args):
-    # with ATAC(args) as runner:
-    #     runner.run()
+    with ATAC(args) as runner:
+        runner.run()
 
     with Maestro_metrics(args) as runner:
         runner.run()
 
-    # with Mapping(args) as runner:
-    #     runner.run()
+    with Mapping(args) as runner:
+        runner.run()
 
-    # with Cells(args) as runner:
-    #     runner.run()
+    with Cells(args) as runner:
+        runner.run()
 
 
 class Maestro_metrics(Step):

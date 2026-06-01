@@ -1,6 +1,7 @@
 ## [1.8.4] - 2026-05-12
  - Add spatial atac pipeline.
  - Change the default genome version from Ensembl 99 to Ensembl 109.
+ - Update spatac bclist.
 
 ## [1.8.3] - 2026-03-24
  - Replace `TSS enrichment score` with `Median of TSS enrichment score`.
