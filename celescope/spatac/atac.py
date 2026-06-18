@@ -1,3 +1,4 @@
+import json
 import subprocess
 import pandas as pd
 import numpy as np
@@ -10,6 +11,8 @@ import scanpy as sc
 import matplotlib.pyplot as plt
 from sklearn.decomposition import TruncatedSVD
 from multiprocessing import Pool
+from matplotlib import colors
+from PIL import Image
 from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
@@ -43,6 +46,26 @@ def read_10X_h5(filename):
         shape = getattr(group, "shape").read()
         matrix = sp_sparse.csc_matrix((data, indices, indptr), shape=shape)
         return FeatureBCMatrix(ids, names, barcodes, matrix)
+
+
+def hires_nocrop_spatial(adata, **kwargs):
+    """
+    sc.pl.spatial wrapper: show full hires image (no crop)
+    """
+    spatial = adata.uns["spatial"]["sample1"]
+    img = spatial["images"]["hires"]
+    h, w = img.shape[:2]
+
+    # scale factor (align coords)
+    scale = spatial["scalefactors"].get("tissue_hires_scalef", 1.0)
+
+    return sc.pl.spatial(
+        adata,
+        img_key="hires",
+        show=False,
+        crop_coord=(0, w / scale, 0, h / scale),
+        **kwargs,
+    )
 
 
 def get_opts_atac(parser, sub_program):
@@ -92,19 +115,12 @@ def get_opts_atac(parser, sub_program):
         default=0.1,
     )
     parser.add_argument(
-        "--spatial",
-        help="spatial directory.",
-        required=True,
-    )
-    parser.add_argument(
         "--keep_mt", help="keep mitochondrial gene in fragments. ", action="store_true"
     )
     parser.add_argument("--out_sam", help="SAM file output. ", action="store_true")
     if sub_program:
         s_common(parser)
-        parser.add_argument(
-            "--match_dir", help="Matched scRNA-seq directory", required=True
-        )
+        parser.add_argument("--spatial_dir", help="spatial directory", required=True)
         parser.add_argument(
             "--input_path", help="input_path from Barcode step.", required=True
         )
@@ -122,7 +138,6 @@ class ATAC(Step):
         self.input_path = os.path.abspath(args.input_path)
         self.reference = os.path.abspath(args.reference)
         self.genomesize = args.genomesize
-        self.match_dir = args.match_dir
 
         # 10X "/SGRNJ06/randd/USER/cjj/celedev/atac/MAESTRO/test/20240403_10X/737K-cratac-v1_rev.txt"
         # cut-off
@@ -132,14 +147,6 @@ class ATAC(Step):
         self.cell_cutoff = args.cell_cutoff
         self.expected_target_cell_num = args.expected_target_cell_num
         self.coef = args.coef
-
-        if self.match_dir != "None":
-            self.match_cell_barcodes, _ = utils.get_barcode_from_match_dir(
-                self.match_dir
-            )
-            self.match_cell_barcodes = [
-                item.replace("_", "") for item in self.match_cell_barcodes
-            ]
 
     @utils.add_log
     def mapping(self):
@@ -248,8 +255,6 @@ class ATAC(Step):
             df["fragments_overlapping_promoter"] / df["fragments"]
         )
         df = df[df["fraction_in_promoter"] >= self.frip_cutoff]
-        if self.match_dir != "None":
-            df = df[df["barcode"].isin(self.match_cell_barcodes)]
         df["barcode"].to_csv("validcells.txt", header=None, index=None)
 
     @utils.add_log
@@ -331,7 +336,7 @@ class Maestro_metrics(Step):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.spatial = args.spatial
+        self.spatial = args.spatial_dir
         self.filtered_peak_count = (
             f"{self.outdir}/peak/{self.sample}_filtered_peak_count.h5"
         )
@@ -458,19 +463,43 @@ class Maestro_metrics(Step):
 
     @utils.add_log
     def add_fragment_count(self):
-        self.adata.obs["fragment_counts"] = list(self.df_barcode["fragments"])
+        # self.adata.obs["fragment_counts"] = list(self.df_barcode["fragments"])
+        self.adata.obs["fragment_counts"] = self.adata.obs.index.map(
+            self.df_barcode.set_index("barcode")["fragments"]
+        )
         self.adata.obs["log_fragments"] = np.log1p(self.adata.obs["fragment_counts"])
+
+    @utils.add_log
+    def add_visium(self):
+        hires = Image.open(f"{self.spatial}/tissue_hires_image.png")
+        lowres = Image.open(f"{self.spatial}/tissue_lowres_image.png")
+
+        hires = np.array(hires)
+        lowres = np.array(lowres)
+
+        with open(f"{self.spatial}/scalefactors_json.json") as f:
+            scalefactors = json.load(f)
+
+        library_id = "sample1"
+
+        self.adata.uns["spatial"] = {
+            library_id: {
+                "images": {"hires": hires, "lowres": lowres},
+                "scalefactors": scalefactors,
+                "metadata": {},
+            }
+        }
 
     @utils.add_log
     def add_count_plot(self, plot_path):
         plt.figure(figsize=(8, 8))
-        sc.pl.embedding(
+        hires_nocrop_spatial(
             self.adata,
-            basis="spatial",
-            color="log_fragments",
-            size=150,
+            color=["log_fragments"],
             color_map="Reds",
-            show=False,
+            size=1.5,
+            alpha=0.5,
+            norm=colors.LogNorm(vmin=1),
         )
         plt.savefig(plot_path, dpi=300, bbox_inches="tight")
         plt.close()
@@ -478,9 +507,7 @@ class Maestro_metrics(Step):
     @utils.add_log
     def add_cluster_plot(self, plot_path):
         plt.figure(figsize=(8, 8))
-        sc.pl.embedding(
-            self.adata, basis="spatial", color="leiden", size=150, show=False
-        )
+        hires_nocrop_spatial(self.adata, color=["leiden"], size=1.5)
         plt.savefig(plot_path, dpi=300, bbox_inches="tight")
         plt.close()
 
@@ -495,6 +522,7 @@ class Maestro_metrics(Step):
         self.write_tsne()
         self.write_spatial()
         self.add_fragment_count()
+        self.add_visium()
         self.add_count_plot(self.filtered_counts_png)
         self.add_cluster_plot(self.cluster_png)
 

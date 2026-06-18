@@ -1,3 +1,8 @@
+## [1.8.5] - 2026-06-18
+ - Change the 4th column of mapfile to spatial directory.
+ - Change log_fragment_count_png and cluster_png based on tissue image and position list.
+ - Add StaticPlot in plotly_plot.
+
 ## [1.8.4] - 2026-05-12
  - Add spatial atac pipeline.
  - Change the default genome version from Ensembl 99 to Ensembl 109.

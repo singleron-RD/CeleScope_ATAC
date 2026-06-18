@@ -2,9 +2,8 @@ import subprocess
 import snapatac2 as snap
 import pandas as pd
 import numpy as np
-import math
 import os
-from celescope.tools.plotly_plot import Tsne_plot
+from celescope.tools.plotly_plot import StaticPlot
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 
@@ -93,17 +92,17 @@ class Analysis(Step):
             help_info="Total number of peaks on primary contigs either detected by the pipeline or input by the user.",
         )
 
-        df_tsne = pd.read_csv(self.df_tsne_file, sep="\t")
-        df_tsne = df_tsne.rename(columns={"Unnamed: 0": "barcode"})
-        df_tsne = pd.merge(df_tsne, df)
-        tsne_cluster = Tsne_plot(df_tsne, "cluster").get_plotly_div()
-        self.add_data(tsne_cluster=tsne_cluster)
+        # df_tsne = pd.read_csv(self.df_tsne_file, sep="\t")
+        # df_tsne = df_tsne.rename(columns={"Unnamed: 0": "barcode"})
+        # df_tsne = pd.merge(df_tsne, df)
+        # tsne_cluster = Tsne_plot(df_tsne, "cluster").get_plotly_div()
+        # self.add_data(tsne_cluster=tsne_cluster)
 
-        df_tsne["log10 Fragments"] = df_tsne["fragments"].apply(lambda x: math.log10(x))
-        tsne_fragment = Tsne_plot(
-            df_tsne, "log10 Fragments", discrete=False
-        ).get_plotly_div()
-        self.add_data(tsne_fragment=tsne_fragment)
+        # df_tsne["log10 Fragments"] = df_tsne["fragments"].apply(lambda x: math.log10(x))
+        # tsne_fragment = Tsne_plot(
+        #     df_tsne, "log10 Fragments", discrete=False
+        # ).get_plotly_div()
+        # self.add_data(tsne_fragment=tsne_fragment)
 
     def cp_files(self):
         """copy files"""
@@ -136,6 +135,8 @@ class Analysis(Step):
         self.run_snapatac2()
         self.add_metrics()
         self.cp_files()
+        self.add_data(plotly_cluster=StaticPlot(self.cluster_png).get_div())
+        self.add_data(plotly_count=StaticPlot(self.counts_png).get_div())
 
 
 def analysis(args):

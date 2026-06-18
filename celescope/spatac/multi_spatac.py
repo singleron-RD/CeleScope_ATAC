@@ -21,7 +21,7 @@ class Multi_spatac(Multi):
         step = "barcode"
         arr = self.fq_dict[sample]
         cmd_line = self.get_cmd_line(step, sample)
-        match_dir = f"{self.col4_dict[sample]}"
+        match_dir = None
         cmd = (
             f"{cmd_line} "
             f"--fq1 {arr[0]} --fq2 {arr[1]} --fq3 {arr[2]} "
@@ -33,8 +33,10 @@ class Multi_spatac(Multi):
         step = "atac"
         cmd_line = self.get_cmd_line(step, sample)
         input_path = f'{self.outdir_dic[sample]["barcode"]}'
-        match_dir = f"{self.col4_dict[sample]}"
-        cmd = f"{cmd_line} " f"--input_path {input_path} " f"--match_dir {match_dir} "
+        spatial_dir = f"{self.col4_dict[sample]}"
+        cmd = (
+            f"{cmd_line} " f"--input_path {input_path} " f"--spatial_dir {spatial_dir} "
+        )
         self.process_cmd(cmd, step, sample, m=30, x=self.args.thread)
 
     def analysis(self, sample):

@@ -3,6 +3,7 @@ import numpy as np
 import plotly.express as px
 import plotly.figure_factory as pf
 import plotly.graph_objects as go
+from PIL import Image
 from collections import defaultdict
 from celescope.tools import utils
 
@@ -419,4 +420,56 @@ class Tsne_plot(Plotly_plot):
             title={"text": self.title, "x": 0.5, "y": 0.95, "font": {"size": 15}},
             plot_bgcolor="#FFFFFF",
             hovermode="closest",
+        )
+
+
+class StaticPlot:
+    def __init__(self, img_path):
+        img = Image.open(img_path)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        fig = go.Figure()
+        width, height = img.size
+        # 添加图片
+        fig.add_layout_image(
+            dict(
+                source=img,
+                xref="x",
+                yref="y",
+                x=0,
+                y=height,
+                sizex=width,
+                sizey=height,
+                sizing="stretch",
+                opacity=1,
+                layer="below",
+            )
+        )
+
+        # 隐藏坐标轴
+        fig.update_xaxes(visible=False, range=[0, width], fixedrange=False)
+        fig.update_yaxes(
+            visible=False,
+            range=[0, height],
+            scaleanchor="x",
+            autorange="reversed",
+            fixedrange=False,
+        )
+
+        # 设置 Figure 尺寸，并去掉边距
+        fig.update_layout(
+            autosize=True,
+            dragmode="pan",
+            margin=dict(l=0, r=0, t=0, b=0),  # 左右上下边距都设为0
+            paper_bgcolor="white",  # 整个图纸背景
+            plot_bgcolor="white",
+        )
+        self._fig = fig
+
+    def get_div(self):
+        return plotly.offline.plot(
+            self._fig,
+            include_plotlyjs=False,
+            output_type="div",
+            config=dict(scrollZoom=True),
         )
