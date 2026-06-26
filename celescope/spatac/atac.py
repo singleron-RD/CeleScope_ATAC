@@ -449,8 +449,8 @@ class Maestro_metrics(Step):
             "in_tissue",
             "array_row",
             "array_col",
-            "pxl_col",
             "pxl_row",
+            "pxl_col",
         ]
         coords["barcode"] = coords["barcode"].str.replace("_", "")
         coords = coords.set_index("barcode")
@@ -459,6 +459,7 @@ class Maestro_metrics(Step):
         coords = coords.loc[common]
 
         # 写入空间坐标
+        self.adata.obs["in_tissue"] = coords["in_tissue"].astype(int)
         self.adata.obsm["spatial"] = coords[["pxl_col", "pxl_row"]].values
 
     @utils.add_log
@@ -471,8 +472,8 @@ class Maestro_metrics(Step):
 
     @utils.add_log
     def add_visium(self):
-        hires = Image.open(f"{self.spatial}/tissue_hires_image.png")
-        lowres = Image.open(f"{self.spatial}/tissue_lowres_image.png")
+        hires = Image.open(f"{self.spatial}/tissue_hires_image.png").convert("RGB")
+        lowres = Image.open(f"{self.spatial}/tissue_lowres_image.png").convert("RGB")
 
         hires = np.array(hires)
         lowres = np.array(lowres)
@@ -494,8 +495,8 @@ class Maestro_metrics(Step):
     def add_count_plot(self, plot_path):
         plt.figure(figsize=(8, 8))
         hires_nocrop_spatial(
-            self.adata,
-            color=["log_fragments"],
+            self.adata[self.adata.obs["in_tissue"] == 1],
+            color=["fragment_counts"],
             color_map="Reds",
             size=1.5,
             alpha=0.5,
@@ -507,7 +508,9 @@ class Maestro_metrics(Step):
     @utils.add_log
     def add_cluster_plot(self, plot_path):
         plt.figure(figsize=(8, 8))
-        hires_nocrop_spatial(self.adata, color=["leiden"], size=1.5)
+        hires_nocrop_spatial(
+            self.adata[self.adata.obs["in_tissue"] == 1], color=["leiden"], size=1.5
+        )
         plt.savefig(plot_path, dpi=300, bbox_inches="tight")
         plt.close()
 

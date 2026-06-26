@@ -2,6 +2,9 @@
  - Change the 4th column of mapfile to spatial directory.
  - Change log_fragment_count_png and cluster_png based on tissue image and position list.
  - Add StaticPlot in plotly_plot.
+ - Convert tissue image to RGB channel.
+ - Fix hires_nocrop_spatial using in_tissue barcode.
+ - Replace `log_fragments` with `fragment_counts` in hires_nocrop_spatial.
 
 ## [1.8.4] - 2026-05-12
  - Add spatial atac pipeline.
