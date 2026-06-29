@@ -18,6 +18,7 @@ from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 from celescope.tools import get_plot_elements
 from celescope.tools.plotly_plot import Insert_plot
+from celescope.spatac.spatial import Spatial
 
 
 __SUB_STEPS__ = ["mapping", "cells"]
@@ -336,7 +337,6 @@ class Maestro_metrics(Step):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.spatial = args.spatial_dir
         self.filtered_peak_count = (
             f"{self.outdir}/peak/{self.sample}_filtered_peak_count.h5"
         )
@@ -371,6 +371,7 @@ class Maestro_metrics(Step):
         )
 
         # out
+        self.spatial = f"{self.outdir}/spatial"
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
         self.df_tsne_file = f"{self.outdir}/tsne_coord.tsv"
         self.filtered_counts_png = f"{self.outdir}/counts.png"
@@ -516,6 +517,8 @@ class Maestro_metrics(Step):
 
     @utils.add_log
     def run(self):
+        spatial = Spatial(self.args.spatial_dir)
+        spatial.output_spatial(self.spatial)
         self.run_tfidf()
         self.run_hvg()
         self.run_svd()
