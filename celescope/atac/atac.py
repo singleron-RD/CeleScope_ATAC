@@ -357,6 +357,8 @@ class Maestro_metrics(Step):
             sep="\t",
             names=["chr", "start", "end"],
         )
+        self.df_fragments = self.df_fragments.astype({"chr": str})  # , "barcode": str
+        self.df_peaks = self.df_peaks.astype({"chr": str})
 
         # out
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
@@ -512,8 +514,8 @@ class Cells(Maestro_metrics):
             df_fragment_chr = df_fragments[df_fragments["chr"] == ch]
             for _, data_peak in df_peak_chr.iterrows():
                 frag_overlap_peak = df_fragment_chr[
-                    (df_fragment_chr["start"] >= data_peak["start"])
-                    & (df_fragment_chr["end"] <= data_peak["end"])
+                    (df_fragment_chr["start"] < data_peak["end"])
+                    & (df_fragment_chr["end"] > data_peak["start"])
                 ]
                 index_res.update(set(frag_overlap_peak.index))
         return index_res

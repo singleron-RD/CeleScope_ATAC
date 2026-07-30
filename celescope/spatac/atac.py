@@ -148,6 +148,10 @@ class ATAC(Step):
         self.cell_cutoff = args.cell_cutoff
         self.expected_target_cell_num = args.expected_target_cell_num
         self.coef = args.coef
+        self.in_tissue_barcodes = Spatial(
+            self.args.spatial_dir
+        ).get_in_tissue_barcodes()
+        self.in_tissue_barcodes = [x.replace("_", "") for x in self.in_tissue_barcodes]
 
     @utils.add_log
     def mapping(self):
@@ -256,6 +260,7 @@ class ATAC(Step):
             df["fragments_overlapping_promoter"] / df["fragments"]
         )
         df = df[df["fraction_in_promoter"] >= self.frip_cutoff]
+        df = df[df["barcode"].isin(self.in_tissue_barcodes)]
         df["barcode"].to_csv("validcells.txt", header=None, index=None)
 
     @utils.add_log
@@ -369,6 +374,8 @@ class Maestro_metrics(Step):
             sep="\t",
             names=["chr", "start", "end"],
         )
+        self.df_fragments = self.df_fragments.astype({"chr": str})  # , "barcode": str
+        self.df_peaks = self.df_peaks.astype({"chr": str})
 
         # out
         self.spatial = f"{self.outdir}/spatial"
@@ -607,8 +614,8 @@ class Cells(Maestro_metrics):
             df_fragment_chr = df_fragments[df_fragments["chr"] == ch]
             for _, data_peak in df_peak_chr.iterrows():
                 frag_overlap_peak = df_fragment_chr[
-                    (df_fragment_chr["start"] >= data_peak["start"])
-                    & (df_fragment_chr["end"] <= data_peak["end"])
+                    (df_fragment_chr["start"] < data_peak["end"])
+                    & (df_fragment_chr["end"] > data_peak["start"])
                 ]
                 index_res.update(set(frag_overlap_peak.index))
         return index_res
@@ -660,9 +667,9 @@ class Cells(Maestro_metrics):
         cell_num = len(self.cell_barcode)
 
         self.add_metric(
-            name="Estimated Number of Cells",
+            name="In Tissue Spots",
             value=len(self.cell_barcode),
-            help_info="The total number of barcodes identified as cells.",
+            help_info="Number of spots in tissue determined based on the image.",
         )
 
         raw_reads = self.get_slot_key(
@@ -671,37 +678,37 @@ class Cells(Maestro_metrics):
             key="Raw Reads",
         )
         self.add_metric(
-            name="Mean raw read pairs per cell",
+            name="Mean raw read pairs per Spot",
             value=int(raw_reads / cell_num),
-            help_info="Total number of read pairs divided by the number of cell barcodes.",
+            help_info="Total number of read pairs divided by the number of in tissue spot.",
         )
 
         total_fragments = sum(self.df_barcode.fragments)
         cell_fragments = sum(self.df_cell_barcode.fragments)
         self.add_metric(
-            name="Fraction of high-quality fragments in cells",
+            name="Fraction of high-quality fragments in Spots",
             value=f"{round(cell_fragments / total_fragments * 100, 2)}%",
-            help_info="Fraction of high-quality fragments with a valid barcode that are associated with cell-containing partitions.",
+            help_info="Fraction of high-quality fragments with a in tissue spot that are associated with cell-containing partitions.",
         )
 
         frac_peak = self.df_cell_barcode["frac_peak"].mean()
         self.add_metric(
-            name="Fraction of Fragments Overlap with Peaks in Cells",
+            name="Fraction of Fragments Overlap with Peaks in Spots",
             value=f"{round(frac_peak * 100, 2)}%",
-            help_info="The proportion of fragments in a cell to overlap with a peak.",
+            help_info="The proportion of fragments in a in tissue spot to overlap with a peak.",
         )
 
         frac_promoter = self.df_cell_barcode["frac_promoter"].mean()
         self.add_metric(
-            name="Fraction of fragments overlap with promoter in cells",
+            name="Fraction of fragments overlap with promoter in Spots",
             value=f"{round(frac_promoter * 100, 2)}%",
-            help_info="The proportion of fragments in a cell to overlap with a promoter sequence.",
+            help_info="The proportion of fragments in a in tissue spot to overlap with a promoter sequence.",
         )
 
         self.add_metric(
-            name="Median high-quality fragments per cell",
+            name="Median high-quality fragments per Spot",
             value=int(np.median(self.df_cell_barcode.fragments)),
-            help_info="The median number of high-quality fragments per cell barcode",
+            help_info="The median number of high-quality fragments per spot",
         )
 
         self.df_barcode.sort_values(by="overlap_peaks", ascending=False, inplace=True)

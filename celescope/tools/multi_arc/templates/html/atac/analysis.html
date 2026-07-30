@@ -1,0 +1,28 @@
+<div class="abc" style="float: left; margin-left: 15%; margin-right:15%; width: 70%" >
+    <h2>{{ step_summary.display_title}}    <i class="icon-help-circled" onClick="toggle1(this.parentNode.parentNode)" style="cursor:pointer;"></i></h2>
+    <div class="box">
+      {% include "html/utils/help_info.html" %}
+      {% include "html/utils/col1_metrics.html" %}
+      <div class="clear" ></div>
+    </div>
+</div>
+
+<div class="abc" style="float: left; margin-left: 15%; margin-right:15%; width: 70%" >
+    <div style="float: left; margin-left: 3%; margin-top: 1%;margin-right:0%; width: 47%">
+      {{ step_summary.Peak_plot|safe }}
+    </div>
+
+    <div style="float: left; margin-left: 3%; margin-top: 1%;margin-right:0%; width: 47%">
+      {{ step_summary.Frag_dis_plot|safe }}
+    </div>
+
+    <div style="float: left; margin-left: 3%; margin-top: 1%;margin-right:0%; width: 47%">
+      {{step_summary.umap_cluster|safe}}        
+    </div>
+    
+    <div style="float: left; margin-left: 3%; margin-top: 1%;margin-right:0%; width: 47%">
+      {{step_summary.umap_fragment|safe}}
+    </div>
+  
+    <div class="clear" ></div>
+</div>

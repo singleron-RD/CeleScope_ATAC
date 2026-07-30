@@ -1,3 +1,9 @@
+## [1.8.6] - 2026-07-30
+ - Add multi arc report while providing match_dir.
+ - Use in_tissue_barcodes to collect `Spots` metrics.
+ - Fix `count_overlap_peak` function that cause partial overlaps were missed.
+ - Fix `Fraction of Fragments Overlap with Peaks in Cells` metric.
+
 ## [1.8.5] - 2026-06-29
  - Change the 4th column of mapfile to spatial directory.
  - Change log_fragment_count_png and cluster_png based on tissue image and position list.

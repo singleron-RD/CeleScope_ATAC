@@ -1,8 +1,11 @@
 import subprocess
 import re
 import os
+import celescope.tools
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
+
+TOOLS_DIR = os.path.dirname(celescope.tools.__file__) + "/multi_arc"
 
 
 def get_opts_cells(parser, sub_program):
@@ -83,10 +86,16 @@ class Cells(Step):
         # change dir back to avoid error
         os.chdir(cwd)
 
+    @utils.add_log
+    def merge_report(self):
+        cmd = f"python {TOOLS_DIR}/merge.py --rna {self.match_dir} --atac {self.outdir}/.. --outdir {self.outdir}/.."
+        subprocess.check_call(cmd, shell=True)
+
     def run(self):
         if self.match_dir != "None":
             self.write_barcode()
             self.rna_cells()
+            self.merge_report()
 
 
 def cells(args):

@@ -1,0 +1,83 @@
+{% include "html/merge/start.html"%}
+
+<!-- 页面1内容 -->
+<div id="page1" class="page-content active" >
+    {% if rna_sample_summary is defined %}
+    {% set step_summary = rna_sample_summary %}
+    {% include "html/merge/step.html"%}
+    {% endif %}
+
+    {% if rna_demultiplexing_summary is defined %}
+    {% set step_summary = rna_demultiplexing_summary %}
+    {% include "html/merge/step.html"%}
+    {% endif %}
+
+    {% if rna_mapping_summary is defined %}
+    {% set step_summary = rna_mapping_summary %}
+    {% include "html/merge/step.html" %}
+    {% endif %}
+
+    {% if rna_cells_summary is defined%}
+    {% set step_summary = rna_cells_summary %}
+    {% include "html/merge/count.html" %}
+    {% endif %}
+
+    {% if rna_analysis_summary is defined %}
+    {% set step_summary = rna_analysis_summary %}
+    {% include "html/merge/analysis.html"%}
+    {% endif %}
+</div>
+
+<!-- 页面2内容 -->
+<div id="page2" class="page-content" >
+    {% if atac_sample_summary is defined %}
+    {% set step_summary = atac_sample_summary %}
+    {% include "html/merge/step.html"%}
+    {% endif %}
+
+    {% if atac_barcode_summary is defined %}
+    {% set step_summary = atac_barcode_summary %}
+    {% include "html/merge/step.html"%}
+    {% endif %}
+
+    {% if atac_mapping_summary is defined %}
+    {% set step_summary = atac_mapping_summary %}
+    {% include "html/merge/atac_mapping.html"%}
+    {% endif %}
+
+    {% if atac_cells_summary is defined %}
+    {% set step_summary = atac_cells_summary %}
+    {% include "html/merge/atac_cells.html"%}
+    {% endif %}
+
+    {% if atac_analysis_summary is defined %}
+    {% set step_summary = atac_analysis_summary %}
+    {% include "html/merge/atac_analysis.html"%}
+    {% endif %}
+
+</div>
+
+<!-- 分页按钮 -->
+<nav class="pagination-nav fixed-top bg-white py-2 border-bottom shadow-sm">
+    <ul class="pagination justify-content-center mb-0">
+        <li class="page-item active"><a class="page-link" href="#" onclick="showPage(1)">RNA</a></li>
+        <li class="page-item"><a class="page-link" href="#" onclick="showPage(2)">ATAC</a></li>
+    </ul>
+</nav>
+</div>
+{% include "html/utils/end.html"%}
+
+<!-- Bootstrap JS + 自定义分页逻辑 -->
+<script>
+    function showPage(pageNumber) {
+        // 隐藏所有页面
+        document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+        // 显示目标页面
+        document.getElementById('page' + pageNumber).classList.add('active');
+
+        // 更新分页按钮状态
+        document.querySelectorAll('.pagination .page-item').forEach((item, index) => {
+            item.classList.toggle('active', index === pageNumber - 1);
+        });
+    }
+</script>
