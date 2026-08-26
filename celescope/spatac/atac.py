@@ -3,14 +3,13 @@ import subprocess
 import pandas as pd
 import numpy as np
 import os
-import itertools
 import collections
 import tables
 import scipy.sparse as sp_sparse
 import scanpy as sc
 import matplotlib.pyplot as plt
 from sklearn.decomposition import TruncatedSVD
-from multiprocessing import Pool
+from pybedtools import BedTool
 from matplotlib import colors
 from PIL import Image
 from celescope.__init__ import ROOT_PATH
@@ -148,10 +147,10 @@ class ATAC(Step):
         self.cell_cutoff = args.cell_cutoff
         self.expected_target_cell_num = args.expected_target_cell_num
         self.coef = args.coef
-        self.in_tissue_barcodes = Spatial(
-            self.args.spatial_dir
-        ).get_in_tissue_barcodes()
-        self.in_tissue_barcodes = [x.replace("_", "") for x in self.in_tissue_barcodes]
+        # self.in_tissue_barcodes = Spatial(
+        #     self.args.spatial_dir
+        # ).get_in_tissue_barcodes()
+        # self.in_tissue_barcodes = [x.replace("_", "") for x in self.in_tissue_barcodes]
 
     @utils.add_log
     def mapping(self):
@@ -260,7 +259,7 @@ class ATAC(Step):
             df["fragments_overlapping_promoter"] / df["fragments"]
         )
         df = df[df["fraction_in_promoter"] >= self.frip_cutoff]
-        df = df[df["barcode"].isin(self.in_tissue_barcodes)]
+        # df = df[df["barcode"].isin(self.in_tissue_barcodes)]
         df["barcode"].to_csv("validcells.txt", header=None, index=None)
 
     @utils.add_log
@@ -362,25 +361,16 @@ class Maestro_metrics(Step):
             self.df_barcode["overlap_promoter"] / self.df_barcode["fragments"], 4
         )
 
-        self.df_fragments = pd.read_csv(
-            f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv",
-            header=None,
-            sep="\t",
-            names=["chr", "start", "end", "barcode", "count"],
+        self.df_fragments = (
+            f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv"
         )
-        self.df_peaks = pd.read_csv(
-            f"{self.outdir}/peak/{self.sample}_final_peaks.bed",
-            header=None,
-            sep="\t",
-            names=["chr", "start", "end"],
-        )
-        self.df_fragments = self.df_fragments.astype({"chr": str})  # , "barcode": str
-        self.df_peaks = self.df_peaks.astype({"chr": str})
+        self.df_peaks = f"{self.outdir}/peak/{self.sample}_final_peaks.bed"
 
         # out
         self.spatial = f"{self.outdir}/spatial"
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
         self.df_tsne_file = f"{self.outdir}/tsne_coord.tsv"
+        self.raw_counts_png = f"{self.outdir}/raw_counts.png"
         self.filtered_counts_png = f"{self.outdir}/counts.png"
         self.cluster_png = f"{self.outdir}/cluster.png"
 
@@ -503,7 +493,7 @@ class Maestro_metrics(Step):
     def add_count_plot(self, plot_path):
         plt.figure(figsize=(8, 8))
         hires_nocrop_spatial(
-            self.adata[self.adata.obs["in_tissue"] == 1],
+            self.adata,
             color=["fragment_counts"],
             color_map="Reds",
             size=1.5,
@@ -516,11 +506,14 @@ class Maestro_metrics(Step):
     @utils.add_log
     def add_cluster_plot(self, plot_path):
         plt.figure(figsize=(8, 8))
-        hires_nocrop_spatial(
-            self.adata[self.adata.obs["in_tissue"] == 1], color=["leiden"], size=1.5
-        )
+        hires_nocrop_spatial(self.adata, color=["leiden"], size=1.5)
         plt.savefig(plot_path, dpi=300, bbox_inches="tight")
         plt.close()
+
+    @utils.add_log
+    def get_filtered_data(self):
+        adata_filtered = self.adata[self.adata.obs["in_tissue"] == 1, :].copy()
+        self.adata = adata_filtered
 
     @utils.add_log
     def run(self):
@@ -536,6 +529,8 @@ class Maestro_metrics(Step):
         self.write_spatial()
         self.add_fragment_count()
         self.add_visium()
+        self.add_count_plot(self.raw_counts_png)
+        self.get_filtered_data()
         self.add_count_plot(self.filtered_counts_png)
         self.add_cluster_plot(self.cluster_png)
 
@@ -605,46 +600,19 @@ class Cells(Maestro_metrics):
         self.cell_barcode = [item.split("\t")[0] for item in self.cell_barcode]
         del self.cell_barcode[0]
 
-    @staticmethod
-    @utils.add_log
-    def get_chunk_df(df_peak, df_fragments):
-        index_res = set()
-        for ch in set(df_peak.chr):
-            df_peak_chr = df_peak[df_peak["chr"] == ch]
-            df_fragment_chr = df_fragments[df_fragments["chr"] == ch]
-            for _, data_peak in df_peak_chr.iterrows():
-                frag_overlap_peak = df_fragment_chr[
-                    (df_fragment_chr["start"] < data_peak["end"])
-                    & (df_fragment_chr["end"] > data_peak["start"])
-                ]
-                index_res.update(set(frag_overlap_peak.index))
-        return index_res
-
     @utils.add_log
     def count_overlap_peak(self):
         """count fragments overlapping peaks"""
-        self.df_fragments.sort_values(["chr", "start", "end"], inplace=True)
-        self.df_peaks.sort_values(["chr", "start", "end"], inplace=True)
+        fragments = BedTool(self.df_fragments)
+        peaks = BedTool(self.df_peaks)
+        frip = fragments.intersect(peaks, u=True, wa=True)
+        df_in_peaks = frip.to_dataframe()
 
-        peaks_count = self.df_peaks.shape[0]
-        chunk_size = peaks_count // self.thread + 1
-        df_peak_list = [
-            self.df_peaks.iloc[chunk_size * i : chunk_size * (i + 1), :]
-            for i in range(self.thread)
-        ]
-        df_fragment_list = [
-            self.df_fragments[self.df_fragments["chr"].isin(set(df_peak.chr))]
-            for df_peak in df_peak_list
-        ]
-
-        with Pool(self.thread) as p:
-            results = p.starmap(Cells.get_chunk_df, zip(df_peak_list, df_fragment_list))
-
-        final_index = set(itertools.chain.from_iterable(results))
-        final_df = self.df_fragments[self.df_fragments.index.isin(final_index)]
-
-        final_df_count = final_df.groupby("barcode", as_index=False).agg(
-            {"count": "sum"}
+        final_df_count = df_in_peaks.groupby("name", as_index=False).agg(
+            {"score": "sum"}
+        )
+        final_df_count = final_df_count.rename(
+            columns={"name": "barcode", "score": "count"}
         )
         self.df_barcode = pd.merge(
             self.df_barcode, final_df_count, on="barcode", how="outer"

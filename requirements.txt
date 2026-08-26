@@ -8,3 +8,4 @@ tables==3.8.0
 pandas==2.1.1
 pysam>=0.18.0
 jinja2>=2.10
+pybedtools

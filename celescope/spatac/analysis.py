@@ -41,6 +41,7 @@ class Analysis(Step):
         self.fragment_files = (
             f"{self.analysis_dir}/fragments_corrected_dedup_count.tsv.gz*"
         )
+        self.raw_counts_png = f"{self.analysis_dir}/raw_counts.png"
         self.counts_png = f"{self.analysis_dir}/counts.png"
         self.cluster_png = f"{self.analysis_dir}/cluster.png"
         self.out = f"{self.outdir}/../outs"
@@ -114,6 +115,7 @@ class Analysis(Step):
             self.fragment_files,
             self.cluster_png,
             self.counts_png,
+            self.raw_counts_png,
         ]
         for file in files:
             cmd = f"cp {file} {self.outdir}"
