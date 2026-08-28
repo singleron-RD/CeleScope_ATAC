@@ -15,6 +15,7 @@ import pandas as pd
 import pysam
 
 from celescope.tools.__init__ import (
+    RAW_MATRIX_DIR_SUFFIX,
     FILTERED_MATRIX_DIR_SUFFIX,
     BARCODE_FILE_NAME,
     OUTS_DIR,
@@ -327,6 +328,19 @@ def barcode_list_stamp(barcode_list, cut=500):
             m = 1
             stamp[n].append(i)
     return stamp, bc_num
+
+
+@add_log
+def get_raw_matrix_dir_from_match_dir(match_dir):
+    """
+    Returns:
+        matrix_dir: PosixPath object
+    """
+    matrix_dir = f"{match_dir}/{OUTS_DIR}/{RAW_MATRIX_DIR_SUFFIX}"
+    if not os.path.exists(matrix_dir):
+        raise FileNotFoundError(f"{matrix_dir} not found")
+
+    return matrix_dir
 
 
 @add_log

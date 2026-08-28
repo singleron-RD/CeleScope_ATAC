@@ -2,13 +2,14 @@ import subprocess
 import pandas as pd
 import numpy as np
 import os
-import itertools
 import collections
 import tables
+import gzip
 import scipy.sparse as sp_sparse
+import scipy.io as sio
 import scanpy as sc
 from sklearn.decomposition import TruncatedSVD
-from multiprocessing import Pool
+from pybedtools import BedTool
 from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
@@ -93,6 +94,12 @@ def get_opts_atac(parser, sub_program):
     parser.add_argument(
         "--keep_mt", help="keep mitochondrial gene in fragments. ", action="store_true"
     )
+    parser.add_argument(
+        "--rna_umi_cutoff",
+        type=int,
+        help="umi cutoff for rna raw matrix",
+        default=500,
+    )
     parser.add_argument("--out_sam", help="SAM file output. ", action="store_true")
     if sub_program:
         s_common(parser)
@@ -128,12 +135,17 @@ class ATAC(Step):
         self.coef = args.coef
 
         if self.match_dir != "None":
-            self.match_cell_barcodes, _ = utils.get_barcode_from_match_dir(
-                self.match_dir
-            )
-            self.match_cell_barcodes = [
-                item.replace("_", "") for item in self.match_cell_barcodes
-            ]
+            self.match_cell_barcodes = self.read_raw_matrix()
+
+    @utils.add_log
+    def read_raw_matrix(self):
+        raw_matrix = utils.get_raw_matrix_dir_from_match_dir(self.match_dir)
+        adata = sc.read_10x_mtx(raw_matrix)
+        sc.pp.filter_cells(adata, min_counts=self.args.rna_umi_cutoff)
+        match_cell_barcodes = list(adata.obs_names)
+        match_cell_barcodes = [item.replace("_", "") for item in match_cell_barcodes]
+
+        return match_cell_barcodes
 
     @utils.add_log
     def mapping(self):
@@ -345,20 +357,10 @@ class Maestro_metrics(Step):
             self.df_barcode["overlap_promoter"] / self.df_barcode["fragments"], 4
         )
 
-        self.df_fragments = pd.read_csv(
-            f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv",
-            header=None,
-            sep="\t",
-            names=["chr", "start", "end", "barcode", "count"],
+        self.df_fragments = (
+            f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv"
         )
-        self.df_peaks = pd.read_csv(
-            f"{self.outdir}/peak/{self.sample}_final_peaks.bed",
-            header=None,
-            sep="\t",
-            names=["chr", "start", "end"],
-        )
-        self.df_fragments = self.df_fragments.astype({"chr": str})  # , "barcode": str
-        self.df_peaks = self.df_peaks.astype({"chr": str})
+        self.df_peaks = f"{self.outdir}/peak/{self.sample}_final_peaks.bed"
 
         # out
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
@@ -505,46 +507,19 @@ class Cells(Maestro_metrics):
         self.cell_barcode = [item.split("\t")[0] for item in self.cell_barcode]
         del self.cell_barcode[0]
 
-    @staticmethod
-    @utils.add_log
-    def get_chunk_df(df_peak, df_fragments):
-        index_res = set()
-        for ch in set(df_peak.chr):
-            df_peak_chr = df_peak[df_peak["chr"] == ch]
-            df_fragment_chr = df_fragments[df_fragments["chr"] == ch]
-            for _, data_peak in df_peak_chr.iterrows():
-                frag_overlap_peak = df_fragment_chr[
-                    (df_fragment_chr["start"] < data_peak["end"])
-                    & (df_fragment_chr["end"] > data_peak["start"])
-                ]
-                index_res.update(set(frag_overlap_peak.index))
-        return index_res
-
     @utils.add_log
     def count_overlap_peak(self):
         """count fragments overlapping peaks"""
-        self.df_fragments.sort_values(["chr", "start", "end"], inplace=True)
-        self.df_peaks.sort_values(["chr", "start", "end"], inplace=True)
+        fragments = BedTool(self.df_fragments)
+        peaks = BedTool(self.df_peaks)
+        frip = fragments.intersect(peaks, u=True, wa=True)
+        df_in_peaks = frip.to_dataframe()
 
-        peaks_count = self.df_peaks.shape[0]
-        chunk_size = peaks_count // self.thread + 1
-        df_peak_list = [
-            self.df_peaks.iloc[chunk_size * i : chunk_size * (i + 1), :]
-            for i in range(self.thread)
-        ]
-        df_fragment_list = [
-            self.df_fragments[self.df_fragments["chr"].isin(set(df_peak.chr))]
-            for df_peak in df_peak_list
-        ]
-
-        with Pool(self.thread) as p:
-            results = p.starmap(Cells.get_chunk_df, zip(df_peak_list, df_fragment_list))
-
-        final_index = set(itertools.chain.from_iterable(results))
-        final_df = self.df_fragments[self.df_fragments.index.isin(final_index)]
-
-        final_df_count = final_df.groupby("barcode", as_index=False).agg(
-            {"count": "sum"}
+        final_df_count = df_in_peaks.groupby("name", as_index=False).agg(
+            {"score": "sum"}
+        )
+        final_df_count = final_df_count.rename(
+            columns={"name": "barcode", "score": "count"}
         )
         self.df_barcode = pd.merge(
             self.df_barcode, final_df_count, on="barcode", how="outer"
@@ -557,6 +532,35 @@ class Cells(Maestro_metrics):
             lambda x: True if x in self.cell_barcode else False
         )
         self.df_barcode.to_csv(self.df_cell_metrics, sep="\t", index=False)
+
+    @utils.add_log
+    def write_rna_filtered_matrix(self):
+        filtered_matrix_dir = f"{self.outdir}/rna_filtered_matrix"
+        utils.check_mkdir(filtered_matrix_dir)
+        raw_matrix = utils.get_raw_matrix_dir_from_match_dir(self.args.match_dir)
+        adata = sc.read_10x_mtx(raw_matrix)
+        sc.pp.filter_cells(adata, min_counts=self.args.rna_umi_cutoff)
+
+        adata.obs_names = adata.obs_names.str.replace("_", "")
+        mask = adata.obs_names.isin(self.cell_barcode)
+        adata_filtered = adata[mask, :].copy()
+
+        # matrix.mtx.gz
+        with gzip.open(f"{filtered_matrix_dir}/matrix.mtx.gz", "wb") as f:
+            sio.mmwrite(f, adata_filtered.X.T)
+
+        # barcodes.tsv.gz
+        with gzip.open(f"{filtered_matrix_dir}/barcodes.tsv.gz", "wt") as f:
+            for barcode in adata_filtered.obs_names:
+                barcode = barcode.replace("_", "")
+                f.write(f"{barcode}\n")
+
+        # features.tsv.gz
+        with gzip.open(f"{filtered_matrix_dir}/features.tsv.gz", "wt") as f:
+            for gene_id, gene_name in zip(
+                adata_filtered.var["gene_ids"], adata_filtered.var_names
+            ):
+                f.write(f"{gene_id}\t{gene_name}\tGene Expression\n")
 
     def run(self):
         self.count_overlap_peak()
@@ -618,3 +622,6 @@ class Cells(Maestro_metrics):
                 self.df_barcode, log_uniform=False
             )
         )
+
+        if self.args.match_dir != "None":
+            self.write_rna_filtered_matrix()

@@ -15,4 +15,9 @@
     {% include "html/atac/analysis.html"%}
     {% endif %}
 
+    {% if match_summary is defined %}
+    {% set step_summary = match_summary %}
+    {% include "html/atac/match.html"%}
+    {% endif %}
+
 {% include "html/utils/end.html"%}
