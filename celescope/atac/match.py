@@ -1,14 +1,11 @@
-import os
 import json
 import pandas as pd
 import numpy as np
-import celescope.tools
 from celescope.tools.matrix import CountMatrix
 from celescope.tools.emptydrop_cr import get_plot_elements
 from celescope.tools import utils
+from celescope.tools.analysis_wrapper import Analysis as Tools_analysis
 from celescope.tools.step import Step, s_common
-
-TOOLS_DIR = os.path.dirname(celescope.tools.__file__) + "/multi_arc"
 
 
 def get_opts_match(parser, sub_program):
@@ -18,7 +15,7 @@ def get_opts_match(parser, sub_program):
             "--match_dir", help="Matched scRNA-seq directory", required=True
         )
         parser.add_argument(
-            "--analysis_dir", help="atac analysis directory", required=True
+            "--matrix_file", help="Matrix directory path.", required=True
         )
     return parser
 
@@ -89,7 +86,7 @@ class Cells_metrics(Step):
         pass
 
 
-class Match(Cells_metrics):
+class Cells_rna(Cells_metrics):
     """Run rna cells and rna analysis to keep the cell numbers of RNA and ATAC consistent"""
 
     def __init__(self, args, display_title=None):
@@ -98,7 +95,7 @@ class Match(Cells_metrics):
         # in
         self.match_dir = args.match_dir
         self.rna_json = f"{self.match_dir}/.metrics.json"
-        self.filtered_matrix = f"{self.args.analysis_dir}/rna_filtered_matrix"
+        self.filtered_matrix = args.matrix_file
         self.counts_file = f"{self.match_dir}/outs/counts.tsv"
 
         # out
@@ -207,6 +204,14 @@ class Match(Cells_metrics):
             self.rna_cell_metrics(filtered)
 
 
+class Analysis_rna(Tools_analysis):
+    def __init__(self, args, display_title=None):
+        super().__init__(args, display_title=display_title)
+
+
 def match(args):
-    with Match(args, display_title="RNA_cells") as runner:
+    with Cells_rna(args) as runner:
+        runner.run()
+
+    with Analysis_rna(args) as runner:
         runner.run()

@@ -15,9 +15,14 @@
     {% include "html/atac/analysis.html"%}
     {% endif %}
 
-    {% if match_summary is defined %}
-    {% set step_summary = match_summary %}
-    {% include "html/atac/match.html"%}
+    {% if cells_rna_summary is defined %}
+    {% set step_summary = cells_rna_summary %}
+    {% include "html/atac/cells_rna.html"%}
+    {% endif %}
+
+    {% if analysis_rna_summary is defined %}
+    {% set step_summary = analysis_rna_summary %}
+    {% include "html/atac/analysis_rna.html"%}
     {% endif %}
 
 {% include "html/utils/end.html"%}

@@ -1,3 +1,11 @@
+## [1.8.7] - 2026-08-31
+ - atac, spatac: Use `bedtools` to count fragments in peaks.
+ - spatac: Add raw fragment count png.
+ - arc: Read raw matrix instead of filtered matrix.
+ - arc: Replace `cells` with `match` step.
+ - arc: Do not run rna cells step.
+ - arc: Remove merge report, Modify report format.
+
 ## [1.8.6] - 2026-07-30
  - Add multi arc report while providing match_dir.
  - Use in_tissue_barcodes to collect `Spots` metrics.

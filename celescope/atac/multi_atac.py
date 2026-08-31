@@ -54,12 +54,10 @@ class Multi_atac(Multi):
 
     def match(self, sample):
         step = "match"
-        analysis_dir = f'{self.outdir_dic[sample]["atac"]}'
+        matrix_file = f'{self.outdir_dic[sample]["atac"]}/rna_filtered_matrix'
         match_dir = f"{self.col4_dict[sample]}"
         cmd_line = self.get_cmd_line(step, sample)
-        cmd = (
-            f"{cmd_line} " f"--analysis_dir {analysis_dir} " f"--match_dir {match_dir} "
-        )
+        cmd = f"{cmd_line} " f"--matrix_file {matrix_file} " f"--match_dir {match_dir} "
         if match_dir != "None":
             self.process_cmd(cmd, step, sample, m=10, x=1)
 
