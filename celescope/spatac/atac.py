@@ -519,6 +519,11 @@ class Maestro_metrics(Step):
     def run(self):
         spatial = Spatial(self.args.spatial_dir)
         spatial.output_spatial(self.spatial)
+        self.write_spatial()
+        self.add_fragment_count()
+        self.add_visium()
+        self.add_count_plot(self.raw_counts_png)
+        self.get_filtered_data()
         self.run_tfidf()
         self.run_hvg()
         self.run_svd()
@@ -526,11 +531,6 @@ class Maestro_metrics(Step):
         self.run_tsne()
         self.run_leiden()
         self.write_tsne()
-        self.write_spatial()
-        self.add_fragment_count()
-        self.add_visium()
-        self.add_count_plot(self.raw_counts_png)
-        self.get_filtered_data()
         self.add_count_plot(self.filtered_counts_png)
         self.add_cluster_plot(self.cluster_png)
 
