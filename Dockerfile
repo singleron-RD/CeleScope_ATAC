@@ -16,6 +16,9 @@ USER root
 RUN micromamba create --name runtime --always-copy --file conda_pkgs.txt \
     && micromamba clean --all --yes
 
+# Install setuptools compatible with Python 3.9.
+RUN micromamba run -n runtime pip install --no-cache-dir "setuptools<83" wheel
+
 # Install Python dependencies in the conda environment
 RUN micromamba run -n runtime pip install --verbose --no-cache-dir .
 
