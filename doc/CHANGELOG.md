@@ -1,6 +1,8 @@
 ## [1.8.7] - 2026-08-31
  - atac, spatac: Use `bedtools` to count fragments in peaks.
  - spatac: Add raw fragment count png.
+ - spatac: Use in-tissue barcode to run LSI.
+ - spatac: Swap barcode order.
  - arc: Read raw matrix instead of filtered matrix.
  - arc: Replace `cells` with `match` step.
  - arc: Do not run rna cells step.

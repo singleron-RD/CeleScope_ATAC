@@ -302,6 +302,7 @@ class Barcode(super_barcode.Barcode):
 
                     if self.match_dir != "None":
                         cb = self.atac_rna_dict[cb]
+                    cb = cb[8:] + cb[:8]
                     qual2 = len(cb) * "F"
                     self.fh_fq3.write(
                         f"@{cb}_{umi}{self.total_num}\n{seq3}\n+\n{qual3}\n"
