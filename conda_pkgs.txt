@@ -5,3 +5,4 @@ bioconda::bedtools=2.29.2
 bioconda::macs2=2.2.7.1
 bioconda::chromap=0.2.6
 bioconda::snapatac2=2.7.0
+bioconda::pybedtools=0.10.0
