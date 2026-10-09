@@ -8,7 +8,7 @@ import tables
 import scipy.sparse as sp_sparse
 import scanpy as sc
 import matplotlib.pyplot as plt
-from sklearn.decomposition import TruncatedSVD
+import snapatac2 as snap
 from pybedtools import BedTool
 from matplotlib import colors
 from PIL import Image
@@ -193,7 +193,7 @@ class ATAC(Step):
         # qc mapping
         cmd1 = (
             "sort -k4,4 -V fragments_corrected_dedup_count.tsv > fragments_corrected_count_sortedbybarcode.tsv;"
-            "bedtools groupby -i fragments_corrected_count_sortedbybarcode.tsv -g 4 -c 5 -o sum > singlecell_mapped.txt"
+            "bedtools groupby -i fragments_corrected_count_sortedbybarcode.tsv -g 4 -c 5,5 -o count,sum > singlecell_mapped.txt"
         )
 
         # qc promoter
@@ -207,7 +207,7 @@ class ATAC(Step):
         cmd3 = (
             "sort -k1,1 singlecell_mapped.txt > singlecell_mapped_sortbybarcode.txt;"
             "sort -k1,1 singlecell_promoter.txt > singlecell_promoter_sortbybarcode.txt;"
-            "join --nocheck-order -t $'\t' -a1 -e'0' -o'1.1 1.2 2.2' -1 1 -2 1 \
+            "join --nocheck-order -t $'\t' -a1 -e'0' -o'1.1 1.2 1.3 2.2' -1 1 -2 1 \
                 singlecell_mapped_sortbybarcode.txt singlecell_promoter_sortbybarcode.txt > singlecell.txt"
         )
 
@@ -252,11 +252,16 @@ class ATAC(Step):
             "singlecell.txt",
             header=None,
             sep="\t",
-            names=["barcode", "fragments", "fragments_overlapping_promoter"],
+            names=[
+                "barcode",
+                "fragments",
+                "readSupport",
+                "fragments_overlapping_promoter",
+            ],
         )
-        df = df[df["fragments"] >= self.count_cutoff]
+        df = df[df["readSupport"] >= self.count_cutoff]
         df["fraction_in_promoter"] = (
-            df["fragments_overlapping_promoter"] / df["fragments"]
+            df["fragments_overlapping_promoter"] / df["readSupport"]
         )
         df = df[df["fraction_in_promoter"] >= self.frip_cutoff]
         # df = df[df["barcode"].isin(self.in_tissue_barcodes)]
@@ -341,10 +346,6 @@ class Maestro_metrics(Step):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.filtered_peak_count = (
-            f"{self.outdir}/peak/{self.sample}_filtered_peak_count.h5"
-        )
-        self.adata = sc.read_10x_h5(self.filtered_peak_count, gex_only=False)
         self.df_mapping = pd.read_csv(
             f"{self.outdir}/fragments_corrected_count_sortedbybarcode.tsv",
             header=None,
@@ -355,10 +356,10 @@ class Maestro_metrics(Step):
             f"{self.outdir}/singlecell.txt",
             header=None,
             sep="\t",
-            names=["barcode", "fragments", "overlap_promoter"],
+            names=["barcode", "fragments", "readSupport", "overlap_promoter"],
         )
         self.df_barcode["frac_promoter"] = round(
-            self.df_barcode["overlap_promoter"] / self.df_barcode["fragments"], 4
+            self.df_barcode["overlap_promoter"] / self.df_barcode["readSupport"], 4
         )
 
         self.df_fragments = (
@@ -369,75 +370,45 @@ class Maestro_metrics(Step):
         # out
         self.spatial = f"{self.outdir}/spatial"
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
-        self.df_tsne_file = f"{self.outdir}/tsne_coord.tsv"
+        self.df_umap_file = f"{self.outdir}/umap_coord.tsv"
         self.raw_counts_png = f"{self.outdir}/raw_counts.png"
         self.filtered_counts_png = f"{self.outdir}/counts.png"
         self.cluster_png = f"{self.outdir}/cluster.png"
 
     @utils.add_log
-    def run_tfidf(self):
-        """Running TF-IDF normalization"""
-        layer_name = "tfidf"
-        X = self.adata.X
-        if not sp_sparse.issparse(X):
-            X = sp_sparse.csr_matrix(X)
-
-        # TF-IDF
-        cell_sum = np.array(X.sum(axis=1)).flatten()
-        tf = X.multiply(1 / cell_sum[:, None])
-        N = X.shape[0]
-        peak_n = np.array((X > 0).sum(axis=0)).flatten()
-        idf = np.log1p(N / (1 + peak_n))
-        tfidf = tf.multiply(idf)
-        self.adata.layers[layer_name] = tfidf.tocsr()
-        # log1p
-        sc.pp.log1p(self.adata)
-
-    @utils.add_log
-    def run_hvg(self):
-        """sc.highly_variable_genes()"""
-        sc.pp.highly_variable_genes(self.adata)
-
-    @utils.add_log
-    def run_svd(self):
-        """Running SVD"""
-        n_components = 30
-        layer = "tfidf"
-        key_added = "X_lsi"
-        X = self.adata.layers[layer]
-        if not sp_sparse.issparse(X):
-            X = sp_sparse.csr_matrix(X)
-
-        svd = TruncatedSVD(
-            n_components=n_components, random_state=0, algorithm="randomized", n_iter=3
+    def read_data(self):
+        genome = snap.genome.Genome(
+            fasta=f"{self.args.reference}/genome.fa",
+            annotation=f"{self.args.reference}/gene.gtf",
         )
-        lsi = svd.fit_transform(X)
-        self.adata.obsm[key_added] = lsi
-        self.adata.uns["lsi"] = {"svd": svd}
+        fragment = f"{self.outdir}/fragments_corrected_dedup_count.tsv"
+        self.adata = snap.pp.import_data(
+            fragment,
+            chrom_sizes=genome,
+            min_num_fragments=0,
+            sorted_by_barcode=False,
+            chrM=["chrM", "M", "MT", "Mt"],
+        )
 
     @utils.add_log
-    def run_neighbors(self):
-        """Computing neighbors using LSI"""
-        sc.pp.neighbors(self.adata, use_rep="X_lsi", n_neighbors=30, n_pcs=30)
+    def run_snapatac2(self):
+        snap.pp.add_tile_matrix(self.adata, bin_size=5000)
+        snap.pp.select_features(self.adata, n_features=25000)
+        snap.tl.spectral(self.adata)
+        snap.tl.umap(self.adata)
+        snap.pp.knn(self.adata)
+        snap.tl.leiden(self.adata, resolution=0.5)
 
     @utils.add_log
-    def run_tsne(self):
-        """Running TSNE"""
-        sc.tl.tsne(self.adata, use_rep="X_lsi", n_pcs=30, perplexity=30, random_state=0)
-
-    @utils.add_log
-    def run_leiden(self):
-        """FindClusters (Leiden)"""
-        sc.tl.leiden(self.adata, resolution=0.3)
-
-    @utils.add_log
-    def write_tsne(self):
-        df_tsne = self.adata.obsm.to_df()[["X_tsne1", "X_tsne2"]]
-        df_tsne["cluster"] = self.adata.obs.leiden
-        tsne_name_dict = {"X_tsne1": "tSNE_1", "X_tsne2": "tSNE_2"}
-        df_tsne = df_tsne.rename(tsne_name_dict, axis="columns")
-        df_tsne["cluster"] = df_tsne["cluster"].map(lambda x: int(x) + 1)
-        df_tsne.to_csv(self.df_tsne_file, sep="\t")
+    def write_umap(self):
+        df_umap = pd.DataFrame(
+            self.adata.obsm["X_umap"],
+            index=self.adata.obs_names,
+            columns=[f"UMAP_{i+1}" for i in range(self.adata.obsm["X_umap"].shape[1])],
+        )
+        df_umap["cluster"] = self.adata.obs.leiden
+        df_umap["cluster"] = df_umap["cluster"].map(lambda x: int(x) + 1)
+        df_umap.to_csv(self.df_umap_file, sep="\t")
 
     @utils.add_log
     def write_spatial(self):
@@ -517,6 +488,7 @@ class Maestro_metrics(Step):
 
     @utils.add_log
     def run(self):
+        self.read_data()
         spatial = Spatial(self.args.spatial_dir)
         spatial.output_spatial(self.spatial)
         self.write_spatial()
@@ -524,13 +496,8 @@ class Maestro_metrics(Step):
         self.add_visium()
         self.add_count_plot(self.raw_counts_png)
         self.get_filtered_data()
-        self.run_tfidf()
-        self.run_hvg()
-        self.run_svd()
-        self.run_neighbors()
-        self.run_tsne()
-        self.run_leiden()
-        self.write_tsne()
+        self.run_snapatac2()
+        self.write_umap()
         self.add_count_plot(self.filtered_counts_png)
         self.add_cluster_plot(self.cluster_png)
 
@@ -539,7 +506,7 @@ class Mapping(Maestro_metrics):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
+        self.cell_barcode = utils.read_one_col(self.df_umap_file)[0]
         self.cell_barcode = [item.split("\t")[0] for item in self.cell_barcode]
         del self.cell_barcode[0]
         self.df_mapping_cell = self.df_mapping[
@@ -596,7 +563,7 @@ class Cells(Maestro_metrics):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
+        self.cell_barcode = utils.read_one_col(self.df_umap_file)[0]
         self.cell_barcode = [item.split("\t")[0] for item in self.cell_barcode]
         del self.cell_barcode[0]
 
@@ -609,7 +576,7 @@ class Cells(Maestro_metrics):
         df_in_peaks = frip.to_dataframe()
 
         final_df_count = df_in_peaks.groupby("name", as_index=False).agg(
-            {"score": "sum"}
+            {"score": "count"}
         )
         final_df_count = final_df_count.rename(
             columns={"name": "barcode", "score": "count"}
@@ -651,8 +618,8 @@ class Cells(Maestro_metrics):
             help_info="Total number of read pairs divided by the number of in tissue spot.",
         )
 
-        total_fragments = sum(self.df_barcode.fragments)
-        cell_fragments = sum(self.df_cell_barcode.fragments)
+        total_fragments = sum(self.df_barcode.readSupport)
+        cell_fragments = sum(self.df_cell_barcode.readSupport)
         self.add_metric(
             name="Fraction of high-quality fragments in Spots",
             value=f"{round(cell_fragments / total_fragments * 100, 2)}%",

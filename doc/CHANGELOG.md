@@ -1,3 +1,9 @@
+## [1.9.1] - 2026-09-07
+ - spatac: Use `snapatac2` to improve dimension reduction and cluster analysis.
+ - spatac: Import fragment file as adata instead of peak matrix.
+ - atac, spatac: Fix `Median high-quality fragments per cell` metric.
+ - atac, spatac: Add `readSupport` column in cell qc file.
+
 ## [1.9.0] - 2026-09-07
  - atac, spatac: Use `bedtools` to count fragments in peaks.
  - spatac: Add raw fragment count png.

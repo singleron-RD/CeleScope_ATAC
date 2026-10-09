@@ -188,7 +188,7 @@ class ATAC(Step):
         # qc mapping
         cmd1 = (
             "sort -k4,4 -V fragments_corrected_dedup_count.tsv > fragments_corrected_count_sortedbybarcode.tsv;"
-            "bedtools groupby -i fragments_corrected_count_sortedbybarcode.tsv -g 4 -c 5 -o sum > singlecell_mapped.txt"
+            "bedtools groupby -i fragments_corrected_count_sortedbybarcode.tsv -g 4 -c 5,5 -o count,sum > singlecell_mapped.txt"
         )
 
         # qc promoter
@@ -202,7 +202,7 @@ class ATAC(Step):
         cmd3 = (
             "sort -k1,1 singlecell_mapped.txt > singlecell_mapped_sortbybarcode.txt;"
             "sort -k1,1 singlecell_promoter.txt > singlecell_promoter_sortbybarcode.txt;"
-            "join --nocheck-order -t $'\t' -a1 -e'0' -o'1.1 1.2 2.2' -1 1 -2 1 \
+            "join --nocheck-order -t $'\t' -a1 -e'0' -o'1.1 1.2 1.3 2.2' -1 1 -2 1 \
                 singlecell_mapped_sortbybarcode.txt singlecell_promoter_sortbybarcode.txt > singlecell.txt"
         )
 
@@ -247,11 +247,16 @@ class ATAC(Step):
             "singlecell.txt",
             header=None,
             sep="\t",
-            names=["barcode", "fragments", "fragments_overlapping_promoter"],
+            names=[
+                "barcode",
+                "fragments",
+                "readSupport",
+                "fragments_overlapping_promoter",
+            ],
         )
-        df = df[df["fragments"] >= self.count_cutoff]
+        df = df[df["readSupport"] >= self.count_cutoff]
         df["fraction_in_promoter"] = (
-            df["fragments_overlapping_promoter"] / df["fragments"]
+            df["fragments_overlapping_promoter"] / df["readSupport"]
         )
         df = df[df["fraction_in_promoter"] >= self.frip_cutoff]
         if self.match_dir != "None":
@@ -351,10 +356,10 @@ class Maestro_metrics(Step):
             f"{self.outdir}/singlecell.txt",
             header=None,
             sep="\t",
-            names=["barcode", "fragments", "overlap_promoter"],
+            names=["barcode", "fragments", "readSupport", "overlap_promoter"],
         )
         self.df_barcode["frac_promoter"] = round(
-            self.df_barcode["overlap_promoter"] / self.df_barcode["fragments"], 4
+            self.df_barcode["overlap_promoter"] / self.df_barcode["readSupport"], 4
         )
 
         self.df_fragments = (
@@ -516,7 +521,7 @@ class Cells(Maestro_metrics):
         df_in_peaks = frip.to_dataframe()
 
         final_df_count = df_in_peaks.groupby("name", as_index=False).agg(
-            {"score": "sum"}
+            {"score": "count"}
         )
         final_df_count = final_df_count.rename(
             columns={"name": "barcode", "score": "count"}
@@ -587,8 +592,8 @@ class Cells(Maestro_metrics):
             help_info="Total number of read pairs divided by the number of cell barcodes.",
         )
 
-        total_fragments = sum(self.df_barcode.fragments)
-        cell_fragments = sum(self.df_cell_barcode.fragments)
+        total_fragments = sum(self.df_barcode.readSupport)
+        cell_fragments = sum(self.df_cell_barcode.readSupport)
         self.add_metric(
             name="Fraction of high-quality fragments in cells",
             value=f"{round(cell_fragments / total_fragments * 100, 2)}%",

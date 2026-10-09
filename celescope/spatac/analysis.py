@@ -37,7 +37,7 @@ class Analysis(Step):
         self.fragment = f"{self.analysis_dir}/fragments_corrected_dedup_count.tsv"
         self.cell_qc_metrics = f"{self.analysis_dir}/cell_qc_metrics.tsv"
         self.peak_res = f"{self.analysis_dir}/peak/{self.sample}_final_peaks.bed"
-        self.df_tsne_file = f"{self.analysis_dir}/tsne_coord.tsv"
+        self.df_umap_file = f"{self.analysis_dir}/umap_coord.tsv"
         self.fragment_files = (
             f"{self.analysis_dir}/fragments_corrected_dedup_count.tsv.gz*"
         )
@@ -67,7 +67,7 @@ class Analysis(Step):
             sorted_by_barcode=False,
             chrM=["chrM", "M", "MT", "Mt"],
         )
-        cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
+        cell_barcode = utils.read_one_col(self.df_umap_file)[0]
         cell_barcode = [item.split("\t")[0] for item in cell_barcode]
         data_cell = data[data.obs.index.isin(cell_barcode)]
         snap.metrics.tsse(data_cell, genome)
@@ -108,7 +108,7 @@ class Analysis(Step):
     def cp_files(self):
         """copy files"""
         files = [
-            self.df_tsne_file,
+            self.df_umap_file,
             self.peak_res,
             self.cell_qc_metrics,
             f"{self.analysis_dir}/peak/*.h5",
