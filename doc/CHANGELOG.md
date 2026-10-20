@@ -1,4 +1,9 @@
-## [1.9.1] - 2026-09-07
+## [1.9.2] - 2026-10-20
+ - atac, spatac: Fix `Confidently mapped read pairs` metric that include mt reads.
+ - atac, spatac: Add `Non-nuclear read pairs` metric.
+ - spatac: Adjust the resolution to 0.3.
+
+## [1.9.1] - 2026-10-09
  - spatac: Use `snapatac2` to improve dimension reduction and cluster analysis.
  - spatac: Import fragment file as adata instead of peak matrix.
  - atac, spatac: Fix `Median high-quality fragments per cell` metric.

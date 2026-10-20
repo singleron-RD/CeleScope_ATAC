@@ -155,36 +155,55 @@ class ATAC(Step):
     @utils.add_log
     def mapping(self):
         """run chromap and process fragments"""
-        cmd1 = (
+        cmd = (
             f"chromap --preset atac "
             f"-x {self.reference}/genome.index -r {self.reference}/genome.fa "
             f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq "
             f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq "
             f"-o fragments_corrected_dedup_count.tsv -t {self.thread} "
         )
+        subprocess.check_call(cmd, shell=True)
+        df = pd.read_csv(
+            "fragments_corrected_dedup_count.tsv",
+            header=None,
+            sep="\t",
+            names=["chrom", "chromStart", "chromEnd", "barcode", "count"],
+        )
+        mapped_reads = sum(df["count"])
+        self.add_metric(
+            name="Confidently Unique mapped read pairs", value=mapped_reads, show=False
+        )
 
-        cmd2 = "grep -Ev 'chrM|MT' fragments_corrected_dedup_count.tsv > tmp && mv tmp fragments_corrected_dedup_count.tsv"
+        cmd = "grep -Ev 'chrM|MT' fragments_corrected_dedup_count.tsv > tmp.tsv"
+        subprocess.check_call(cmd, shell=True)
+        df = pd.read_csv(
+            "tmp.tsv",
+            header=None,
+            sep="\t",
+            names=["chrom", "chromStart", "chromEnd", "barcode", "count"],
+        )
+        mt_reads = mapped_reads - sum(df["count"])
+        self.add_metric(name="Non-nuclear read pairs", value=mt_reads, show=False)
+        if self.args.keep_mt:
+            cmd = "rm tmp.tsv"
+        else:
+            cmd = "mv tmp.tsv fragments_corrected_dedup_count.tsv"
+        subprocess.check_call(cmd, shell=True)
 
-        cmd3 = (
+        cmd = (
             "bgzip -c fragments_corrected_dedup_count.tsv > fragments_corrected_dedup_count.tsv.gz;"
             "tabix -p bed fragments_corrected_dedup_count.tsv.gz"
         )
+        subprocess.check_call(cmd, shell=True)
 
-        cmd4 = (
-            f"chromap --preset atac "
-            f"-x {self.reference}/genome.index -r {self.reference}/genome.fa "
-            f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq "
-            f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq "
-            f"--SAM -o alignment.sam -t {self.thread} "
-        )
-
-        cmds = [cmd1, cmd2, cmd3]
-        if self.args.keep_mt:
-            del cmds[1]
         if self.args.out_sam:
-            cmds.append(cmd4)
-
-        for cmd in cmds:
+            cmd = (
+                f"chromap --preset atac "
+                f"-x {self.reference}/genome.index -r {self.reference}/genome.fa "
+                f"-1 {self.input_path}/{self.sample}_S1_L001_R1_001.fastq -2 {self.input_path}/{self.sample}_S1_L001_R3_001.fastq "
+                f"-b {self.input_path}/{self.sample}_S1_L001_R2_001.fastq "
+                f"--SAM -o alignment.sam -t {self.thread} "
+            )
             subprocess.check_call(cmd, shell=True)
 
     @utils.add_log
@@ -397,7 +416,7 @@ class Maestro_metrics(Step):
         snap.tl.spectral(self.adata)
         snap.tl.umap(self.adata)
         snap.pp.knn(self.adata)
-        snap.tl.leiden(self.adata, resolution=0.5)
+        snap.tl.leiden(self.adata, resolution=0.3)
 
     @utils.add_log
     def write_umap(self):
@@ -519,16 +538,33 @@ class Mapping(Maestro_metrics):
             step_name="barcode",
             key="Valid Reads",
         )
-
-        self.df_mapping["size"] = (
-            self.df_mapping["chromEnd"] - self.df_mapping["chromStart"]
+        mapped_reads = self.get_slot_key(
+            slot="metrics",
+            step_name="aTAC",
+            key="Confidently Unique Mapped Read Pairs",
+        )
+        mt_reads = self.get_slot_key(
+            slot="metrics",
+            step_name="aTAC",
+            key="Non-nuclear Read Pairs",
         )
 
         self.add_metric(
             name="Confidently Unique mapped read pairs",
-            value=sum(self.df_mapping["count"]),
+            value=mapped_reads,
             total=valid_reads,
             help_info="Fraction of Unique mapped read pairs",
+        )
+
+        self.add_metric(
+            name="Non-nuclear read pairs",
+            value=mt_reads,
+            total=valid_reads,
+            help_info="Fraction of Unique mapped read pairs that map to non-nuclear genome contigs, including mitochondria",
+        )
+
+        self.df_mapping["size"] = (
+            self.df_mapping["chromEnd"] - self.df_mapping["chromStart"]
         )
 
         self.add_metric(
