@@ -86,6 +86,52 @@ class Cells_metrics(Step):
         pass
 
 
+class Demultiplexing_rna(Cells_metrics):
+    """RNA Demultiplexing metrics"""
+
+    def __init__(self, args, display_title=None):
+        Step.__init__(self, args, display_title=display_title)
+
+        # in
+        self.match_dir = args.match_dir
+        self.rna_json = f"{self.match_dir}/.metrics.json"
+
+    @utils.add_log
+    def rna_demultiplexing_metrics(self):
+        with open(self.rna_json, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        demultiplexing_metrics = data["demultiplexing_summary"]
+
+        name = "Raw Reads"
+        self.add_metric(
+            name=name,
+            value=demultiplexing_metrics[name],
+            help_info="Total reads from FASTQ files",
+        )
+        name = "Valid Reads"
+        self.add_metric(
+            name=name,
+            value=f"{demultiplexing_metrics[name]}%",
+            help_info="Fraction of reads with valid barcode and UMI.",
+        )
+        name = "Q30 of Barcodes"
+        self.add_metric(
+            name=name,
+            value=f"{demultiplexing_metrics[name]}%",
+            help_info="Fraction of barcode bases with quality score ≥ 30.",
+        )
+        name = "Q30 of UMI"
+        self.add_metric(
+            name=name,
+            value=f"{demultiplexing_metrics[name]}%",
+            help_info="Fraction of UMI bases with quality score ≥ 30.",
+        )
+
+    def run(self):
+        if self.match_dir != "None":
+            self.rna_demultiplexing_metrics()
+
+
 class Cells_rna(Cells_metrics):
     """Run rna cells and rna analysis to keep the cell numbers of RNA and ATAC consistent"""
 
@@ -210,6 +256,9 @@ class Analysis_rna(Tools_analysis):
 
 
 def match(args):
+    with Demultiplexing_rna(args) as runner:
+        runner.run()
+
     with Cells_rna(args) as runner:
         runner.run()
 

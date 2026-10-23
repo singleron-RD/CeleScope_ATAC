@@ -27,6 +27,17 @@ FeatureBCMatrix = collections.namedtuple(
     "FeatureBCMatrix", ["ids", "names", "barcodes", "matrix"]
 )
 
+"""snapatac2 default variable name
+BIN_SIZE = 500
+N_FEATURES = 25000
+N_COMPS = 30
+N_NEIGHBORS = 30
+MIN_DIST = 0.5
+RESOLUTION = 0.5
+MIN_COUNTS = 100
+MIN_TSSE = 2
+"""
+
 
 def read_10X_h5(filename):
     """Read 10X HDF5 files, support both gene expression and peaks."""
@@ -118,6 +129,55 @@ def get_opts_atac(parser, sub_program):
         "--keep_mt", help="keep mitochondrial gene in fragments. ", action="store_true"
     )
     parser.add_argument("--out_sam", help="SAM file output. ", action="store_true")
+    # snapatac2 variable name
+    parser.add_argument(
+        "--bin_size",
+        help="The width, in base pairs, of each consecutive genomic bin.",
+        type=int,
+        default=500,
+    )
+    parser.add_argument(
+        "--n_features",
+        help="Maximum number of features to keep. The final number can be smaller if too few features pass filtering or have nonzero counts.",
+        type=int,
+        default=25000,
+    )
+    parser.add_argument(
+        "--n_comps",
+        help="Maximum number of spectral dimensions to compute.",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
+        "--n_neighbors",
+        help="Number of nearest neighbors to store for each observation.",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
+        "--min_counts",
+        help="Minimum data.obs.n_fragment value required for a cell to pass filtering.",
+        type=int,
+        default=100,
+    )
+    parser.add_argument(
+        "--min_tsse",
+        help="Minimum data.obs.tsse value required for a cell to pass filtering.",
+        type=int,
+        default=2,
+    )
+    parser.add_argument(
+        "--min_dist",
+        help="The min_dist parameter controls how tightly UMAP is allowed to pack points together.",
+        type=float,
+        default=0.5,
+    )
+    parser.add_argument(
+        "--resolution",
+        help="Clustering resolution. Larger values usually produce more clusters.",
+        type=float,
+        default=0.5,
+    )
     if sub_program:
         s_common(parser)
         parser.add_argument("--spatial_dir", help="spatial directory", required=True)
@@ -409,14 +469,22 @@ class Maestro_metrics(Step):
             chrM=["chrM", "M", "MT", "Mt"],
         )
 
+        # QC
+        snap.metrics.tsse(self.adata, genome)
+        snap.pp.filter_cells(
+            self.adata, min_counts=self.args.min_counts, min_tsse=self.args.min_tsse
+        )
+
     @utils.add_log
     def run_snapatac2(self):
-        snap.pp.add_tile_matrix(self.adata, bin_size=5000)
-        snap.pp.select_features(self.adata, n_features=25000)
-        snap.tl.spectral(self.adata)
-        snap.tl.umap(self.adata)
-        snap.pp.knn(self.adata)
-        snap.tl.leiden(self.adata, resolution=0.3)
+        snap.pp.add_tile_matrix(self.adata, bin_size=self.args.bin_size)
+        snap.pp.select_features(self.adata, n_features=self.args.n_features)
+        snap.tl.spectral(self.adata, n_comps=self.args.n_comps)
+        snap.pp.knn(self.adata, n_neighbors=self.args.n_neighbors)
+        snap.tl.leiden(self.adata, resolution=self.args.resolution)
+        snap.tl.umap(
+            self.adata, n_neighbors=self.args.n_neighbors, min_dist=self.args.min_dist
+        )
 
     @utils.add_log
     def write_umap(self):

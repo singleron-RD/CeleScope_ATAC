@@ -8,7 +8,7 @@ import gzip
 import scipy.sparse as sp_sparse
 import scipy.io as sio
 import scanpy as sc
-from sklearn.decomposition import TruncatedSVD
+import snapatac2 as snap
 from pybedtools import BedTool
 from celescope.__init__ import ROOT_PATH
 from celescope.tools import utils
@@ -23,6 +23,14 @@ __SUB_STEPS__ = ["mapping", "cells"]
 FeatureBCMatrix = collections.namedtuple(
     "FeatureBCMatrix", ["ids", "names", "barcodes", "matrix"]
 )
+
+"""snapatac2 variable name
+N_FEATURES = 50000
+N_COMPS = 30
+N_NEIGHBORS = 30
+N_UMAP_DIMS = 20
+RESOLUTION = 0.8
+"""
 
 
 def read_10X_h5(filename):
@@ -101,6 +109,37 @@ def get_opts_atac(parser, sub_program):
         default=500,
     )
     parser.add_argument("--out_sam", help="SAM file output. ", action="store_true")
+    # snapatac2 variable name
+    parser.add_argument(
+        "--n_features",
+        help="Maximum number of features to keep. The final number can be smaller if too few features pass filtering or have nonzero counts.",
+        type=int,
+        default=50000,
+    )
+    parser.add_argument(
+        "--n_comps",
+        help="Maximum number of spectral dimensions to compute.",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
+        "--n_neighbors",
+        help="Number of nearest neighbors to store for each observation.",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
+        "--resolution",
+        help="Clustering resolution. Larger values usually produce more clusters.",
+        type=float,
+        default=0.8,
+    )
+    parser.add_argument(
+        "--n_umap_dims",
+        help="Dimensions from use_rep to use. If an integer, use the first use_dims columns",
+        type=int,
+        default=20,
+    )
     if sub_program:
         s_common(parser)
         parser.add_argument(
@@ -388,89 +427,36 @@ class Maestro_metrics(Step):
 
         # out
         self.df_cell_metrics = f"{self.outdir}/cell_qc_metrics.tsv"
-        self.df_tsne_file = f"{self.outdir}/tsne_coord.tsv"
+        self.df_umap_file = f"{self.outdir}/umap_coord.tsv"
 
     @utils.add_log
-    def run_tfidf(self):
-        """Running TF-IDF normalization"""
-        layer_name = "tfidf"
-        X = self.adata.X
-        if not sp_sparse.issparse(X):
-            X = sp_sparse.csr_matrix(X)
-
-        # TF-IDF
-        cell_sum = np.array(X.sum(axis=1)).flatten()
-        tf = X.multiply(1 / cell_sum[:, None])
-        N = X.shape[0]
-        peak_n = np.array((X > 0).sum(axis=0)).flatten()
-        idf = np.log1p(N / (1 + peak_n))
-        tfidf = tf.multiply(idf)
-        self.adata.layers[layer_name] = tfidf.tocsr()
-        # log1p
-        sc.pp.log1p(self.adata)
+    def run_snapatac2(self):
+        snap.pp.select_features(self.adata, n_features=self.args.n_features)
+        snap.tl.spectral(self.adata, n_comps=self.args.n_comps)
+        snap.pp.knn(self.adata, n_neighbors=self.args.n_neighbors)
+        snap.tl.leiden(self.adata, resolution=self.args.resolution)
+        snap.tl.umap(self.adata, use_dims=self.args.n_umap_dims)
 
     @utils.add_log
-    def run_hvg(self):
-        """sc.highly_variable_genes()"""
-        sc.pp.highly_variable_genes(self.adata)
-
-    @utils.add_log
-    def run_svd(self):
-        """Running SVD"""
-        n_components = 30
-        layer = "tfidf"
-        key_added = "X_lsi"
-        X = self.adata.layers[layer]
-        if not sp_sparse.issparse(X):
-            X = sp_sparse.csr_matrix(X)
-
-        svd = TruncatedSVD(
-            n_components=n_components, random_state=0, algorithm="randomized", n_iter=3
-        )
-        lsi = svd.fit_transform(X)
-        self.adata.obsm[key_added] = lsi
-        self.adata.uns["lsi"] = {"svd": svd}
-
-    @utils.add_log
-    def run_neighbors(self):
-        """Computing neighbors using LSI"""
-        sc.pp.neighbors(self.adata, use_rep="X_lsi", n_neighbors=30, n_pcs=30)
-
-    @utils.add_log
-    def run_tsne(self):
-        """Running TSNE"""
-        sc.tl.tsne(self.adata, use_rep="X_lsi", n_pcs=30, perplexity=30, random_state=0)
-
-    @utils.add_log
-    def run_leiden(self):
-        """FindClusters (Leiden)"""
-        sc.tl.leiden(self.adata, resolution=0.8)
-
-    @utils.add_log
-    def write_tsne(self):
-        df_tsne = self.adata.obsm.to_df()[["X_tsne1", "X_tsne2"]]
-        df_tsne["cluster"] = self.adata.obs.leiden
-        tsne_name_dict = {"X_tsne1": "tSNE_1", "X_tsne2": "tSNE_2"}
-        df_tsne = df_tsne.rename(tsne_name_dict, axis="columns")
-        df_tsne["cluster"] = df_tsne["cluster"].map(lambda x: int(x) + 1)
-        df_tsne.to_csv(self.df_tsne_file, sep="\t")
+    def write_umap(self):
+        df_umap = self.adata.obsm.to_df()[["X_umap1", "X_umap2"]]
+        df_umap["cluster"] = self.adata.obs.leiden
+        umap_name_dict = {"X_umap1": "UMAP_1", "X_umap2": "UMAP_2"}
+        df_umap = df_umap.rename(umap_name_dict, axis="columns")
+        df_umap["cluster"] = df_umap["cluster"].map(lambda x: int(x) + 1)
+        df_umap.to_csv(self.df_umap_file, sep="\t")
 
     @utils.add_log
     def run(self):
-        self.run_tfidf()
-        self.run_hvg()
-        self.run_svd()
-        self.run_neighbors()
-        self.run_tsne()
-        self.run_leiden()
-        self.write_tsne()
+        self.run_snapatac2()
+        self.write_umap()
 
 
 class Mapping(Maestro_metrics):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
+        self.cell_barcode = utils.read_one_col(self.df_umap_file)[0]
         self.cell_barcode = [item.split("\t")[0] for item in self.cell_barcode]
         del self.cell_barcode[0]
         self.df_mapping_cell = self.df_mapping[
@@ -544,7 +530,7 @@ class Cells(Maestro_metrics):
     def __init__(self, args, display_title=None):
         super().__init__(args, display_title=display_title)
 
-        self.cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
+        self.cell_barcode = utils.read_one_col(self.df_umap_file)[0]
         self.cell_barcode = [item.split("\t")[0] for item in self.cell_barcode]
         del self.cell_barcode[0]
 

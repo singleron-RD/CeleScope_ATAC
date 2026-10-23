@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import math
 import os
-from celescope.tools.plotly_plot import Peak_plot, Tsne_plot, Frag_dis_plot
+from celescope.tools.plotly_plot import Peak_plot, Umap_plot, Frag_dis_plot
 from celescope.tools import utils
 from celescope.tools.step import Step, s_common
 
@@ -38,7 +38,7 @@ class Analysis(Step):
         self.fragment = f"{self.analysis_dir}/fragments_corrected_dedup_count.tsv"
         self.cell_qc_metrics = f"{self.analysis_dir}/cell_qc_metrics.tsv"
         self.peak_res = f"{self.analysis_dir}/peak/{self.sample}_final_peaks.bed"
-        self.df_tsne_file = f"{self.analysis_dir}/tsne_coord.tsv"
+        self.df_umap_file = f"{self.analysis_dir}/umap_coord.tsv"
         self.fragment_files = (
             f"{self.analysis_dir}/fragments_corrected_dedup_count.tsv.gz*"
         )
@@ -65,7 +65,7 @@ class Analysis(Step):
             sorted_by_barcode=False,
             chrM=["chrM", "M", "MT", "Mt"],
         )
-        cell_barcode = utils.read_one_col(self.df_tsne_file)[0]
+        cell_barcode = utils.read_one_col(self.df_umap_file)[0]
         cell_barcode = [item.split("\t")[0] for item in cell_barcode]
         data_cell = data[data.obs.index.isin(cell_barcode)]
         snap.metrics.tsse(data_cell, genome)
@@ -97,22 +97,22 @@ class Analysis(Step):
             help_info="Total number of peaks on primary contigs either detected by the pipeline or input by the user.",
         )
 
-        df_tsne = pd.read_csv(self.df_tsne_file, sep="\t")
-        df_tsne = df_tsne.rename(columns={"Unnamed: 0": "barcode"})
-        df_tsne = pd.merge(df_tsne, df)
-        tsne_cluster = Tsne_plot(df_tsne, "cluster").get_plotly_div()
-        self.add_data(tsne_cluster=tsne_cluster)
+        df_umap = pd.read_csv(self.df_umap_file, sep="\t")
+        df_umap = df_umap.rename(columns={"Unnamed: 0": "barcode"})
+        df_umap = pd.merge(df_umap, df)
+        umap_cluster = Umap_plot(df_umap, "cluster").get_plotly_div()
+        self.add_data(umap_cluster=umap_cluster)
 
-        df_tsne["log10 Fragments"] = df_tsne["fragments"].apply(lambda x: math.log10(x))
-        tsne_fragment = Tsne_plot(
-            df_tsne, "log10 Fragments", discrete=False
+        df_umap["log10 Fragments"] = df_umap["fragments"].apply(lambda x: math.log10(x))
+        umap_fragment = Umap_plot(
+            df_umap, "log10 Fragments", discrete=False
         ).get_plotly_div()
-        self.add_data(tsne_fragment=tsne_fragment)
+        self.add_data(umap_fragment=umap_fragment)
 
     def cp_files(self):
         """copy files"""
         files = [
-            self.df_tsne_file,
+            self.df_umap_file,
             self.peak_res,
             self.cell_qc_metrics,
             f"{self.analysis_dir}/peak/*.h5",

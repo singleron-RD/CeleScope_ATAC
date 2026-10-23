@@ -15,6 +15,11 @@
     {% include "html/atac/analysis.html"%}
     {% endif %}
 
+    {% if demultiplexing_rna_summary is defined %}
+    {% set step_summary = demultiplexing_rna_summary %}
+    {% include "html/utils/step.html"%}
+    {% endif %}
+
     {% if cells_rna_summary is defined %}
     {% set step_summary = cells_rna_summary %}
     {% include "html/atac/cells_rna.html"%}

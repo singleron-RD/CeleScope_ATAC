@@ -1,6 +1,6 @@
 import os
 
-__VERSION__ = "1.9.2"
+__VERSION__ = "2.0.0"
 __version__ = __VERSION__
 
 ASSAY_LIST = ["atac", "spatac"]

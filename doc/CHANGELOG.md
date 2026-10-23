@@ -1,3 +1,9 @@
+## [2.0.0] - 2026-10-23
+ - spatac: Add snap.pp.filter_cells step.
+ - atac, spatac: Optimize dimension reduction parameters.
+ - atac: Use `snapatac2` to improve dimension reduction and cluster analysis.
+ - arc: Add `RNA demultiplexing` metric.
+
 ## [1.9.2] - 2026-10-20
  - atac, spatac: Fix `Confidently mapped read pairs` metric that include mt reads.
  - atac, spatac: Add `Non-nuclear read pairs` metric.
