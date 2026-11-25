@@ -27,7 +27,8 @@ class Barcode(super_barcode.Barcode):
 
         self.fq3_list = args.fq3.split(",")
         self.match_dir = args.match_dir
-        if self.match_dir != "None":
+        self.force_rna_barcode = args.force_rna_barcode
+        if self.match_dir != "None" or self.force_rna_barcode:
             chemistry = self.get_slot_key(
                 slot="metrics",
                 step_name="sample",
@@ -300,7 +301,7 @@ class Barcode(super_barcode.Barcode):
                     if umi:
                         umi += "_"
 
-                    if self.match_dir != "None":
+                    if self.match_dir != "None" or self.force_rna_barcode:
                         cb = self.atac_rna_dict[cb]
                     qual2 = len(cb) * "F"
                     self.fh_fq3.write(
@@ -331,6 +332,11 @@ def get_opts_barcode(parser, sub_program=True):
         "--removed_barcodes",
         help="removed barcodes in valid reads.",
         default="GGTGGGTGGGTG",
+    )
+    parser.add_argument(
+        "--force_rna_barcode",
+        help="convert atac barcode to rna barcode.",
+        action="store_true",
     )
     if sub_program:
         parser.add_argument(

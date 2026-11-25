@@ -1,3 +1,6 @@
+## [2.0.1] - 2026-11-25
+ - atac: Add `--force_rna_barcode` to convert ATAC barcode to RNA barcode.
+
 ## [2.0.0] - 2026-10-23
  - spatac: Add snap.pp.filter_cells step.
  - atac, spatac: Optimize dimension reduction parameters.
